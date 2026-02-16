@@ -8,90 +8,93 @@
 html,body{margin:0;height:100%;background:#000;overflow:hidden}
 .game{position:fixed;inset:0}
 .img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
-.hs{position:absolute;border:0;background:transparent}
+.hs{position:absolute;border:0;background:transparent;-webkit-tap-highlight-color:transparent}
 .hs:active{transform:scale(.96)}
 
-#boom{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0}
+#boom{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0;pointer-events:none}
 
 #stream{
- position:absolute;
- left:50%;
- top:10%;
- width:30%;
+ position:absolute; left:50%; top:10%; width:30%;
  transform:translateX(-50%) translateY(-60px);
- opacity:0;
- pointer-events:none;
+ opacity:0; pointer-events:none;
 }
 @keyframes drop{
  0%{opacity:0;transform:translateX(-50%) translateY(-60px)}
  10%{opacity:1}
  100%{opacity:0;transform:translateX(-50%) translateY(420px)}
 }
-.uiBar{
- position:absolute;
- left:0;
- right:0;
- bottom:40px;
- display:flex;
- justify-content:center;
- gap:20px;
- z-index:9999;              /* 🔥 무조건 위로 */
-}
 
+/* UI: 기본 숨김 */
+.uiBar{position:absolute;left:0;right:0;bottom:20px;display:none;justify-content:center;gap:12px;z-index:9999}
 .uiBtn{
- border:0;
- border-radius:50%;
- width:70px;
- height:70px;
- font-size:30px;
- font-weight:900;
- background:rgba(255,255,255,0.9);   /* 🔥 흰색으로 확실히 */
+ border:0;border-radius:50%;
+ width:64px;height:64px;
+ font-size:28px;font-weight:900;
+ background:rgba(255,255,255,.92);
  color:#000;
- box-shadow:0 6px 20px rgba(0,0,0,0.6);
+ box-shadow:0 6px 20px rgba(0,0,0,.55);
 }
+.uiBtn:active{transform:scale(.97)}
 
 .uiNext{
- position:absolute;
- right:20px;
- bottom:120px;
- border:0;
- border-radius:14px;
- padding:14px 18px;
- font-weight:900;
- font-size:18px;
- background:#ff4d6d;
- color:#fff;
- z-index:9999;              /* 🔥 위로 */
+ position:absolute;right:16px;bottom:100px;
+ border:0;border-radius:14px;
+ padding:12px 16px;
+ font-weight:900;font-size:16px;
+ background:#ff4d6d;color:#fff;
+ display:none; z-index:9999;
 }
 .uiNext.show{display:block}
 
+/* 상단 안내 */
 .hintText{
- position:absolute;
- top:20px;
- left:0; right:0;
- text-align:center;
- color:#fff;
- font-weight:800;
+ position:absolute;top:14px;left:0;right:0;
+ text-align:center;color:#fff;font-weight:800;
  text-shadow:0 2px 10px rgba(0,0,0,.8);
+ padding:0 14px;z-index:9999;pointer-events:none;
+}
+
+/* 자물쇠 숫자 표시 */
+.lockDigits{
+ position:absolute;
+ left:31%; top:44%;
+ width:38%; height:15%;
+ display:grid;
+ grid-template-columns:repeat(4,1fr);
+ gap:6%;
+ padding:4% 6%;
+ align-items:center;
+ z-index:9999;
+}
+.digit{
+ background:rgba(0,0,0,.55);
+ border-radius:10px;
+ color:#fff;
+ font-weight:900;
+ font-size:28px;
+ display:flex;
+ align-items:center;
+ justify-content:center;
+ box-shadow: inset 0 0 0 1px rgba(255,255,255,.15), 0 8px 18px rgba(0,0,0,.35);
+ user-select:none;
 }
 </style>
 </head>
 <body>
 
 <div class="game" id="game">
-<img id="scene" class="img">
-<img id="stream">
-<img id="boom" src="boom.png">
+  <img id="scene" class="img" alt="scene">
+  <img id="stream" alt="stream">
+  <img id="boom" src="boom.png" alt="boom">
 
-<div class="hintText" id="hint"></div>
+  <div class="hintText" id="hint"></div>
 
-<div class="uiBar" id="wallUI" style="display:none;">
-<button class="uiBtn" id="btnL">◀</button>
-<button class="uiBtn" id="btnC">▲</button>
-<button class="uiBtn" id="btnR">▶</button>
-</div>
-
-<button class="uiNext" id="btnNext">다음 ▶</button>
+  <div class="uiBar" id="wallUI">
+    <button class="uiBtn" id="btnL">◀</button>
+    <button class="uiBtn" id="btnC">▲</button>
+    <button class="uiBtn" id="btnR">▶</button>
+  </div>
+  <button class="uiNext" id="btnNext">다음 ▶</button>
 </div>
 
 <!-- 사운드 -->
@@ -132,201 +135,222 @@ const stage=document.getElementById("stage");
 const drawer=document.getElementById("drawer");
 const boomS=document.getElementById("boomS");
 
-function s(a){a.currentTime=0;a.play();}
+function s(a){ try{a.currentTime=0;a.play();}catch{} }
 function setScene(src){
- scene.src=src;
- hint.textContent="";
- wallUI.style.display="none";
- btnNext.classList.remove("show");
+  scene.src=src;
+  hint.textContent="";
+  wallUI.style.display="none";
+  btnNext.classList.remove("show");
+  document.querySelectorAll(".lockDigits").forEach(el=>el.remove());
+  document.querySelectorAll(".hsFull").forEach(el=>el.remove());
 }
-
 function fullTap(nextFn){
- const b=document.createElement("button");
- b.className="hs";
- b.style.left="0";
- b.style.top="0";
- b.style.width="100%";
- b.style.height="100%";
- b.onclick=()=>{b.remove();nextFn();};
- game.appendChild(b);
+  const b=document.createElement("button");
+  b.className="hs hsFull";
+  b.style.left="0"; b.style.top="0"; b.style.width="100%"; b.style.height="100%";
+  b.onclick=()=>{ b.remove(); nextFn(); };
+  game.appendChild(b);
+}
+function addHS(x,y,w,h,fn){
+  const b=document.createElement("button");
+  b.className="hs";
+  b.style.left=x+"%"; b.style.top=y+"%";
+  b.style.width=w+"%"; b.style.height=h+"%";
+  b.onclick=fn;
+  game.appendChild(b);
 }
 
 /* 시작 */
 function S0(){
- setScene("s0.png");
- fullTap(()=>{
-  s(tap);
-  bgm.volume=.35;
-  bgm.play();
-  S1();
- });
+  setScene("s0.png");
+  fullTap(()=>{
+    s(tap);
+    bgm.volume=.35;
+    bgm.play().catch(()=>{});
+    S1();
+  });
 }
 function S1(){
- setScene("s1.png");
- fullTap(()=>{s(tap);F0();});
+  setScene("s1.png");
+  fullTap(()=>{ s(tap); F0(); });
 }
 
 /* 손전등 */
 function F0(){
- setScene("f0.png");
- hint.textContent="책상을 눌러라";
- fullTap(()=>{s(drawer);F1();});
+  setScene("f0.png");
+  hint.textContent="책상을 눌러라";
+  fullTap(()=>{ s(drawer); F1(); });
 }
 function F1(){
- setScene("k2c.png");
- hint.textContent="서랍을 확인해라";
- fullTap(()=>{s(get);F2();});
+  setScene("k2c.png");
+  hint.textContent="서랍을 확인해라";
+  fullTap(()=>{ s(get); F2(); });
 }
 function F2(){
- setScene("flash.png");
- hint.textContent="손전등 획득!";
- setTimeout(()=>Wall("l"),1000);
+  setScene("flash.png");
+  hint.textContent="손전등 획득!";
+  setTimeout(()=>WallStart(),1000);
 }
 
-/* 벽 */
-let saw=false;
-function Wall(where){
- saw=saw||(where==="c");
- wallUI.style.display="flex";
-
- if(where==="l") setScene("fl.png");
- if(where==="c") setScene("fc.png");
- if(where==="r") setScene("fr.png");
-
- if(saw) btnNext.classList.add("show");
-
- btnL.onclick=()=>{s(tap);Wall("l");};
- btnC.onclick=()=>{s(tap);Wall("c");};
- btnR.onclick=()=>{s(tap);Wall("r");};
- btnNext.onclick=()=>{s(unlock);Lock1();};
+/* ✅ 벽: 정면(fc)부터 시작 + 처음부터 화살표 3개 다 보이게 */
+let sawHintWall = false; // fl을 한 번이라도 봤는지
+function WallStart(){
+  sawHintWall = false;
+  showWall("c");
 }
+function showWall(where){
+  if(where==="l") { setScene("fl.png"); sawHintWall = true; }
+  if(where==="c") { setScene("fc.png"); }
+  if(where==="r") { setScene("fr.png"); }
 
-/* 자물쇠 */
-function mountLock(answer,openImg,next){
- let code=["0","0","0","0"];
- const baseX=31, baseY=44, W=38, H=15;
- for(let i=0;i<4;i++){
-  const b=document.createElement("button");
-  b.className="hs";
-  b.style.left=(baseX+i*(W/4))+"%";
-  b.style.top=baseY+"%";
-  b.style.width=(W/4)+"%";
-  b.style.height=H+"%";
-  b.onclick=()=>{
-   s(tap);
-   code[i]=(Number(code[i])+1)%10+"";
-   if(code.join("")===answer){
+  wallUI.style.display="flex";
+
+  // ✅ 처음부터 3개 모두 보이게
+  btnL.style.display="inline-block";
+  btnC.style.display="inline-block";
+  btnR.style.display="inline-block";
+
+  // 안내 문구(너무 스포 안 되게)
+  hint.textContent = sawHintWall ? "힌트를 찾았다!" : "어디에 힌트가 있을까…?";
+
+  // 버튼 동작
+  btnL.onclick = ()=>{ s(tap); showWall("l"); };
+  btnC.onclick = ()=>{ s(tap); showWall("c"); };
+  btnR.onclick = ()=>{ s(tap); showWall("r"); };
+
+  // ✅ 다음 버튼은 “힌트벽(fl)을 본 이후”에만 등장
+  if(sawHintWall) btnNext.classList.add("show");
+  else btnNext.classList.remove("show");
+
+  btnNext.onclick = ()=>{
+    if(!sawHintWall) return;
     s(unlock);
-    scene.src=openImg;
-    setTimeout(()=>{s(stage);next();},700);
-   }
+    Lock1();
   };
-  game.appendChild(b);
- }
 }
 
-function Lock1(){setScene("k1c.png");mountLock("1019","k1o.png",Potion);}
-function Lock2(){setScene("k1c.png");mountLock("0506","k1o.png",Books);}
+/* 자물쇠(표시되는 숫자) */
+function lockStage(answer, closedImg, openImg, nextFn){
+  setScene(closedImg);
+  hint.textContent="숫자를 눌러 비밀번호를 맞춰라";
+
+  const digitsWrap=document.createElement("div");
+  digitsWrap.className="lockDigits";
+  const digitEls=[];
+  for(let i=0;i<4;i++){
+    const d=document.createElement("div");
+    d.className="digit";
+    d.textContent="0";
+    digitsWrap.appendChild(d);
+    digitEls.push(d);
+  }
+  game.appendChild(digitsWrap);
+
+  let code=["0","0","0","0"];
+  const baseX=31, baseY=44, W=38, H=15;
+
+  for(let i=0;i<4;i++){
+    addHS(baseX+i*(W/4), baseY, (W/4), H, ()=>{
+      s(tap);
+      code[i]=String((Number(code[i])+1)%10);
+      digitEls[i].textContent = code[i];
+      if(code.join("")===answer){
+        s(unlock);
+        scene.src=openImg;
+        setTimeout(()=>{ s(stage); nextFn(); }, 700);
+      }
+    });
+  }
+}
+function Lock1(){ lockStage("1019","k1c.png","k1o.png",Potion); }
+function Lock2(){ lockStage("0506","k1c.png","k1o.png",Books); }
 
 /* 물약 */
 let picked=[];
 const colorMap={
- blue:"q1.png",
- brown:"q2.png",
- black:"q3.png",
- purple:"q4.png",
- skin:"q5.png",
- red:"q6.png",
- pink:"q7.png",
- lime:"q8.png",
- yellow:"q9.png"
+  blue:"q1.png", brown:"q2.png", black:"q3.png",
+  purple:"q4.png", skin:"q5.png", red:"q6.png",
+  pink:"q7.png", lime:"q8.png", yellow:"q9.png"
 };
-
 function Potion(){
- picked=[];
- setScene("p0.png");
+  picked=[];
+  setScene("p0.png");
+  hint.textContent="물약을 골라 종이에 부어라";
 
- addPotion(10,60,"blue");
- addPotion(25,60,"brown");
- addPotion(40,60,"black");
- addPotion(55,60,"purple");
- addPotion(70,60,"red");
- addPotion(10,75,"pink");
- addPotion(25,75,"lime");
- addPotion(40,75,"yellow");
+  function addPotion(x,y,key){
+    addHS(x,y,12,15,()=>{
+      s(mix);
+      picked.push(key);
+      stream.src=colorMap[key];
+      stream.style.animation="none"; void stream.offsetWidth;
+      stream.style.animation="drop 600ms ease forwards";
+    });
+  }
 
- addHS(75,10,20,10,()=>{
-  s(paper);
-  setScene("m0.png");
-  fullTap(()=>Potion());
- });
+  addPotion(10,60,"blue"); addPotion(25,60,"brown"); addPotion(40,60,"black");
+  addPotion(55,60,"purple"); addPotion(70,60,"red");
+  addPotion(10,75,"pink"); addPotion(25,75,"lime"); addPotion(40,75,"yellow");
 
- addHS(10,90,22,8,()=>{
-  s(paper);
-  setScene("pp0.png");
-  addHS(70,85,26,12,()=>{
-   s(pour);
-   if([...picked].sort().join()==="black,brown,blue"){
-    s(stage);
-    setScene("pp1.png");
-    fullTap(()=>Lock2());
-   }else{
-    s(boomS);
-    boom.style.opacity=1;
-    setTimeout(()=>{boom.style.opacity=0;Potion();},800);
-   }
+  addHS(75,10,20,10,()=>{
+    s(paper);
+    setScene("m0.png");
+    hint.textContent="화면 터치하면 접힘";
+    fullTap(()=>Potion());
   });
- });
-}
 
-function addHS(x,y,w,h,fn){
- const b=document.createElement("button");
- b.className="hs";
- b.style.left=x+"%";
- b.style.top=y+"%";
- b.style.width=w+"%";
- b.style.height=h+"%";
- b.onclick=fn;
- game.appendChild(b);
-}
+  addHS(10,90,22,8,()=>{
+    s(paper);
+    setScene("pp0.png");
+    hint.textContent="붓기 버튼을 눌러라";
 
-function addPotion(x,y,key){
- addHS(x,y,12,15,()=>{
-  s(mix);
-  picked.push(key);
-  stream.src=colorMap[key];
-  stream.style.animation="none";
-  void stream.offsetWidth;
-  stream.style.animation="drop 600ms ease forwards";
- });
+    addHS(70,85,26,12,()=>{
+      s(pour);
+      const ok = [...picked].sort().join(",") === ["black","brown","blue"].sort().join(",");
+      if(ok){
+        s(stage);
+        setScene("pp1.png");
+        hint.textContent="0506…";
+        fullTap(()=>Lock2());
+      }else{
+        s(boomS);
+        boom.style.opacity=1;
+        setTimeout(()=>{ boom.style.opacity=0; Potion(); }, 800);
+      }
+    });
+  });
 }
 
 /* 책 */
 function Books(){
- setScene("b0.png");
- addHS(10,60,30,10,()=>{s(tap);});
- addHS(10,72,30,10,()=>{s(tap);});
- addHS(10,84,30,10,()=>{
-  s(get);
-  setScene("key.png");
-  fullTap(()=>Lock3());
- });
+  setScene("b0.png");
+  hint.textContent="세령공주에게 준 책을 찾아라";
+
+  addHS(10,60,30,10,()=>{ s(tap); hint.textContent="땡!"; setTimeout(()=>hint.textContent="세령공주에게 준 책을 찾아라",700); });
+  addHS(10,72,30,10,()=>{ s(tap); hint.textContent="땡!"; setTimeout(()=>hint.textContent="세령공주에게 준 책을 찾아라",700); });
+
+  addHS(10,84,30,10,()=>{
+    s(get);
+    setScene("key.png");
+    hint.textContent="열쇠 획득!";
+    fullTap(()=>Lock3());
+  });
 }
 
-/* 마지막 */
+/* 마지막 자물쇠 */
 function Lock3(){
- setScene("k3c.png");
- fullTap(()=>{
-  s(unlock);
-  setScene("k3o.png");
-  setTimeout(()=>End(),900);
- });
+  setScene("k3c.png");
+  hint.textContent="화면을 터치해 자물쇠를 열어라";
+  fullTap(()=>{
+    s(unlock);
+    setScene("k3o.png");
+    setTimeout(()=>End(),900);
+  });
 }
-
 function End(){
- bgm.pause();
- endbgm.play();
- setScene("end.png");
+  bgm.pause(); bgm.currentTime=0;
+  endbgm.volume=0.5;
+  endbgm.play().catch(()=>{});
+  setScene("end.png");
 }
 
 S0();
