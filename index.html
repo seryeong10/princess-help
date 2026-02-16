@@ -2,14 +2,16 @@
 <html lang="ko">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
 <title>세령공주 구출</title>
 <style>
 html,body{margin:0;height:100%;background:#000;overflow:hidden}
 .game{position:fixed;inset:0}
 .img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
 .hs{position:absolute;border:0;background:transparent}
-.hs:active{transform:scale(.95)}
+.hs:active{transform:scale(.96)}
+
+#boom{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0}
 
 #stream{
  position:absolute;
@@ -20,28 +22,71 @@ html,body{margin:0;height:100%;background:#000;overflow:hidden}
  opacity:0;
  pointer-events:none;
 }
-
 @keyframes drop{
  0%{opacity:0;transform:translateX(-50%) translateY(-60px)}
  10%{opacity:1}
  100%{opacity:0;transform:translateX(-50%) translateY(420px)}
 }
 
-#boom{
+.uiBar{
  position:absolute;
- inset:0;
- width:100%;
- height:100%;
- object-fit:cover;
- opacity:0;
+ left:0; right:0;
+ bottom:20px;
+ display:flex;
+ justify-content:center;
+ gap:10px;
+}
+.uiBtn{
+ border:0;
+ border-radius:14px;
+ padding:12px 16px;
+ font-weight:900;
+ font-size:18px;
+ background:rgba(0,0,0,.6);
+ color:#fff;
+}
+.uiNext{
+ position:absolute;
+ right:14px;
+ bottom:90px;
+ border:0;
+ border-radius:16px;
+ padding:12px 16px;
+ font-weight:900;
+ font-size:16px;
+ background:rgba(255,77,109,.85);
+ color:#fff;
+ display:none;
+}
+.uiNext.show{display:block}
+
+.hintText{
+ position:absolute;
+ top:20px;
+ left:0; right:0;
+ text-align:center;
+ color:#fff;
+ font-weight:800;
+ text-shadow:0 2px 10px rgba(0,0,0,.8);
 }
 </style>
 </head>
 <body>
+
 <div class="game" id="game">
 <img id="scene" class="img">
 <img id="stream">
 <img id="boom" src="boom.png">
+
+<div class="hintText" id="hint"></div>
+
+<div class="uiBar" id="wallUI" style="display:none;">
+<button class="uiBtn" id="btnL">◀</button>
+<button class="uiBtn" id="btnC">▲</button>
+<button class="uiBtn" id="btnR">▶</button>
+</div>
+
+<button class="uiNext" id="btnNext">다음 ▶</button>
 </div>
 
 <!-- 사운드 -->
@@ -62,6 +107,13 @@ const scene=document.getElementById("scene");
 const game=document.getElementById("game");
 const stream=document.getElementById("stream");
 const boom=document.getElementById("boom");
+const hint=document.getElementById("hint");
+
+const wallUI=document.getElementById("wallUI");
+const btnL=document.getElementById("btnL");
+const btnC=document.getElementById("btnC");
+const btnR=document.getElementById("btnR");
+const btnNext=document.getElementById("btnNext");
 
 const bgm=document.getElementById("bgm");
 const endbgm=document.getElementById("endbgm");
@@ -76,7 +128,152 @@ const drawer=document.getElementById("drawer");
 const boomS=document.getElementById("boomS");
 
 function s(a){a.currentTime=0;a.play();}
-function clearHS(){document.querySelectorAll(".hs").forEach(e=>e.remove())}
+function setScene(src){
+ scene.src=src;
+ hint.textContent="";
+ wallUI.style.display="none";
+ btnNext.classList.remove("show");
+}
+
+function fullTap(nextFn){
+ const b=document.createElement("button");
+ b.className="hs";
+ b.style.left="0";
+ b.style.top="0";
+ b.style.width="100%";
+ b.style.height="100%";
+ b.onclick=()=>{b.remove();nextFn();};
+ game.appendChild(b);
+}
+
+/* 시작 */
+function S0(){
+ setScene("s0.png");
+ fullTap(()=>{
+  s(tap);
+  bgm.volume=.35;
+  bgm.play();
+  S1();
+ });
+}
+function S1(){
+ setScene("s1.png");
+ fullTap(()=>{s(tap);F0();});
+}
+
+/* 손전등 */
+function F0(){
+ setScene("f0.png");
+ hint.textContent="책상을 눌러라";
+ fullTap(()=>{s(drawer);F1();});
+}
+function F1(){
+ setScene("k2c.png");
+ hint.textContent="서랍을 확인해라";
+ fullTap(()=>{s(get);F2();});
+}
+function F2(){
+ setScene("flash.png");
+ hint.textContent="손전등 획득!";
+ setTimeout(()=>Wall("l"),1000);
+}
+
+/* 벽 */
+let saw=false;
+function Wall(where){
+ saw=saw||(where==="c");
+ wallUI.style.display="flex";
+
+ if(where==="l") setScene("fl.png");
+ if(where==="c") setScene("fc.png");
+ if(where==="r") setScene("fr.png");
+
+ if(saw) btnNext.classList.add("show");
+
+ btnL.onclick=()=>{s(tap);Wall("l");};
+ btnC.onclick=()=>{s(tap);Wall("c");};
+ btnR.onclick=()=>{s(tap);Wall("r");};
+ btnNext.onclick=()=>{s(unlock);Lock1();};
+}
+
+/* 자물쇠 */
+function mountLock(answer,openImg,next){
+ let code=["0","0","0","0"];
+ const baseX=31, baseY=44, W=38, H=15;
+ for(let i=0;i<4;i++){
+  const b=document.createElement("button");
+  b.className="hs";
+  b.style.left=(baseX+i*(W/4))+"%";
+  b.style.top=baseY+"%";
+  b.style.width=(W/4)+"%";
+  b.style.height=H+"%";
+  b.onclick=()=>{
+   s(tap);
+   code[i]=(Number(code[i])+1)%10+"";
+   if(code.join("")===answer){
+    s(unlock);
+    scene.src=openImg;
+    setTimeout(()=>{s(stage);next();},700);
+   }
+  };
+  game.appendChild(b);
+ }
+}
+
+function Lock1(){setScene("k1c.png");mountLock("1019","k1o.png",Potion);}
+function Lock2(){setScene("k1c.png");mountLock("0506","k1o.png",Books);}
+
+/* 물약 */
+let picked=[];
+const colorMap={
+ blue:"q1.png",
+ brown:"q2.png",
+ black:"q3.png",
+ purple:"q4.png",
+ skin:"q5.png",
+ red:"q6.png",
+ pink:"q7.png",
+ lime:"q8.png",
+ yellow:"q9.png"
+};
+
+function Potion(){
+ picked=[];
+ setScene("p0.png");
+
+ addPotion(10,60,"blue");
+ addPotion(25,60,"brown");
+ addPotion(40,60,"black");
+ addPotion(55,60,"purple");
+ addPotion(70,60,"red");
+ addPotion(10,75,"pink");
+ addPotion(25,75,"lime");
+ addPotion(40,75,"yellow");
+
+ addHS(75,10,20,10,()=>{
+  s(paper);
+  setScene("m0.png");
+  fullTap(()=>Potion());
+ });
+
+ addHS(10,90,22,8,()=>{
+  s(paper);
+  setScene("pp0.png");
+  addHS(70,85,26,12,()=>{
+   s(pour);
+   if([...picked].sort().join()==="black,brown,blue"){
+    s(stage);
+    setScene("pp1.png");
+    fullTap(()=>Lock2());
+   }else{
+    s(boomS);
+    boom.style.opacity=1;
+    setTimeout(()=>{boom.style.opacity=0;Potion();},800);
+   }
+  });
+ });
+}
+
 function addHS(x,y,w,h,fn){
  const b=document.createElement("button");
  b.className="hs";
@@ -87,170 +284,40 @@ function addHS(x,y,w,h,fn){
  b.onclick=fn;
  game.appendChild(b);
 }
-function setScene(src){scene.src=src;clearHS();}
 
-/* 시작 */
-function S0(){
- setScene("s0.png");
- addHS(0,0,100,100,()=>{
-  s(tap);
-  bgm.volume=.35;
-  bgm.play();
-  S1();
+function addPotion(x,y,key){
+ addHS(x,y,12,15,()=>{
+  s(mix);
+  picked.push(key);
+  stream.src=colorMap[key];
+  stream.style.animation="none";
+  void stream.offsetWidth;
+  stream.style.animation="drop 600ms ease forwards";
  });
 }
 
-function S1(){
- setScene("s1.png");
- addHS(0,0,100,100,()=>{s(tap);F0();});
-}
-
-/* 손전등 방 */
-function F0(){
- setScene("f0.png");
- addHS(30,55,40,25,()=>{s(drawer);F1();});
-}
-
-function F1(){
- setScene("k2c.png");
- addHS(35,60,30,20,()=>{s(get);F2();});
-}
-
-function F2(){
- setScene("k3c.png");
- setTimeout(()=>Wall(),1000);
-}
-
-function Wall(){
- setScene("fl.png");
- addHS(5,85,25,10,()=>{s(tap);setScene("fl.png");WallBtns(false);});
- addHS(37,85,25,10,()=>{s(tap);setScene("fc.png");WallBtns(true);});
- addHS(70,85,25,10,()=>{s(tap);setScene("fr.png");WallBtns(false);});
-}
-
-function WallBtns(found){
- addHS(5,85,25,10,()=>{setScene("fl.png");WallBtns(found);});
- addHS(37,85,25,10,()=>{setScene("fc.png");WallBtns(true);});
- addHS(70,85,25,10,()=>{setScene("fr.png");WallBtns(found);});
- if(found){
-  addHS(30,95,40,5,()=>{s(unlock);Lock1();});
- }
-}
-
-/* 자물쇠 1 (1019) */
-function Lock1(){
- setScene("k1c.png");
- mountLock("1019","k1o.png",Potion);
-}
-
-/* 자물쇠 2 (0506) */
-function Lock2(){
- setScene("k1c.png");
- mountLock("0506","k1o.png",Books);
-}
-
-/* 숫자 로직 */
-function mountLock(answer,openImg,next){
- let code=["0","0","0","0"];
- const baseX=31, baseY=44, w=38, h=15;
- for(let i=0;i<4;i++){
-  addHS(baseX+i*(w/4),baseY,w/4,h,()=>{
-   s(tap);
-   code[i]=(Number(code[i])+1)%10+"";
-   if(code.join("")===answer){
-    s(unlock);
-    scene.src=openImg;
-    setTimeout(()=>{s(stage);next();},700);
-   }
-  });
- }
-}
-
-/* 물약 */
-let picked=[];
-const potionMap={
- "blue":"q1.png",
- "brown":"q2.png",
- "black":"q3.png",
- "purple":"q4.png",
- "skin":"q5.png",
- "red":"q6.png",
- "pink":"q7.png",
- "lime":"q8.png",
- "yellow":"q9.png"
-};
-
-function Potion(){
- picked=[];
- setScene("p0.png");
-
- addHS(10,60,12,15,()=>drop("blue"));
- addHS(25,60,12,15,()=>drop("brown"));
- addHS(40,60,12,15,()=>drop("black"));
- addHS(55,60,12,15,()=>drop("purple"));
- addHS(70,60,12,15,()=>drop("red"));
- addHS(10,75,12,15,()=>drop("pink"));
- addHS(25,75,12,15,()=>drop("lime"));
- addHS(40,75,12,15,()=>drop("yellow"));
-
- addHS(75,10,20,10,()=>{
-  s(paper);
-  setScene("m0.png");
-  addHS(0,0,100,100,()=>Potion());
- });
-
- addHS(10,90,20,8,()=>{
-  s(paper);
-  setScene("pp0.png");
-  addHS(70,85,25,10,()=>{
-   s(pour);
-   if(picked.sort().join()==="black,brown,blue"){
-    s(stage);
-    setScene("pp1.png");
-    addHS(0,0,100,100,()=>Lock2());
-   }else{
-    s(boomS);
-    boom.style.opacity=1;
-    setTimeout(()=>{boom.style.opacity=0;Potion();},800);
-   }
-  });
- });
-}
-
-function drop(color){
- s(mix);
- picked.push(color);
- stream.src="img/"+potionMap[color];
- stream.style.animation="none";
- void stream.offsetWidth;
- stream.style.animation="drop 600ms ease forwards";
-}
-
-/* 책장 */
+/* 책 */
 function Books(){
  setScene("b0.png");
-
  addHS(10,60,30,10,()=>{s(tap);});
  addHS(10,72,30,10,()=>{s(tap);});
-
  addHS(10,84,30,10,()=>{
   s(get);
   setScene("key.png");
-  addHS(0,0,100,100,()=>Lock3());
+  fullTap(()=>Lock3());
  });
 }
 
-/* 마지막 자물쇠 */
+/* 마지막 */
 function Lock3(){
  setScene("k3c.png");
- addHS(0,0,100,100,()=>{
+ fullTap(()=>{
   s(unlock);
   setScene("k3o.png");
-  setTimeout(()=>End(),800);
+  setTimeout(()=>End(),900);
  });
 }
 
-/* 엔딩 */
 function End(){
  bgm.pause();
  endbgm.play();
