@@ -1,289 +1,435 @@
 <!doctype html>
 <html lang="ko">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
 <title>세령공주 구출</title>
 <style>
-html,body{margin:0;height:100%;background:#000;overflow:hidden}
-.game{position:fixed;inset:0;background:#000}
-.img{
-  position:absolute;inset:0;width:100%;height:100%;
-  object-fit:cover;object-position:center;
-}
-.img.contain{object-fit:contain;background:#000}
+  :root{
+    /* ✅ 자물쇠 숫자 위치(필요하면 여기만 조금씩 조정) */
+    --lock-x: 22%;
+    --lock-y: 50%;
+    --lock-w: 56%;
+    --lock-h: 9%;
+  }
 
-.hs{
-  position:absolute;border:0;background:transparent;
-  -webkit-tap-highlight-color:transparent;
-  z-index:99990;
-}
-.hs:active{transform:scale(.96)}
+  html,body{margin:0;height:100%;background:#000;overflow:hidden}
+  .game{position:fixed;inset:0;touch-action:manipulation}
+  .bg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
 
-.hintText{
-  position:absolute;top:14px;left:0;right:0;
-  text-align:center;color:#fff;font-weight:800;
-  text-shadow:0 2px 10px rgba(0,0,0,.8);
-  padding:0 14px;z-index:99995;pointer-events:none;
-}
+  /* 클릭 가능한 투명 버튼 */
+  .hs{position:absolute;border:0;background:transparent;-webkit-tap-highlight-color:transparent}
+  .hs:active{transform:scale(.98)}
 
-.uiNext{
-  position:absolute;right:16px;bottom:100px;
-  border:0;border-radius:14px;
-  padding:12px 16px;
-  font-weight:900;font-size:16px;
-  background:#ff4d6d;color:#fff;
-  display:none; z-index:99995;
-}
-.uiNext.show{display:block}
+  /* 상단 안내 */
+  .hint{
+    position:absolute;top:12px;left:0;right:0;
+    text-align:center;color:#fff;font-weight:900;
+    text-shadow:0 3px 12px rgba(0,0,0,.85);
+    padding:0 12px;z-index:9999;pointer-events:none;
+    letter-spacing:-0.2px;
+  }
 
-/* 폭탄 오버레이(선택) */
-#boomOverlay{
-  position:absolute;inset:0;width:100%;height:100%;
-  object-fit:contain;opacity:0;pointer-events:none;
-  z-index:99980;
-}
+  /* 하단 화살표 UI */
+  .uiBar{
+    position:absolute;left:0;right:0;bottom:18px;
+    display:none;justify-content:center;gap:12px;z-index:9999
+  }
+  .uiBtn{
+    border:0;border-radius:50%;
+    width:64px;height:64px;
+    font-size:28px;font-weight:1000;
+    background:rgba(255,255,255,.92); color:#000;
+    box-shadow:0 8px 22px rgba(0,0,0,.55);
+  }
+  .uiBtn:active{transform:scale(.97)}
+  .nextBtn{
+    position:absolute;right:14px;bottom:100px;
+    border:0;border-radius:14px;
+    padding:12px 16px;
+    font-weight:1000;font-size:16px;
+    background:#ff4d6d;color:#fff;
+    display:none; z-index:9999;
+    box-shadow:0 10px 22px rgba(0,0,0,.45);
+  }
+  .nextBtn.show{display:block}
 
-/* 물줄기 */
-#stream{
-  position:absolute;
-  left:50%;
-  top:20%;
-  width:34%;
-  transform:translateX(-50%) translateY(-80px);
-  opacity:0;
-  pointer-events:none;
-  z-index:99970;
-}
-@keyframes dropLong{
-  0%   {opacity:1; transform:translateX(-50%) translateY(-80px)}
-  100% {opacity:1; transform:translateX(-50%) translateY(520px)}
-}
+  /* =========================
+     ✅ 자물쇠 숫자 버튼
+  ========================= */
+  .lockDigits{
+    position:absolute;
+    left:var(--lock-x);
+    top:var(--lock-y);
+    width:var(--lock-w);
+    height:var(--lock-h);
+    display:grid;
+    grid-template-columns:repeat(4,1fr);
+    gap:4%;
+    z-index:9999;
+    pointer-events:auto;
+  }
+  .digitBtn{
+    border:0;
+    border-radius:14px;
+    background:rgba(0,0,0,.45);
+    color:#fff;
+    font-weight:1000;
+    font-size:clamp(18px, 6vw, 34px);
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,.14), 0 8px 18px rgba(0,0,0,.35);
+    -webkit-tap-highlight-color:transparent;
+  }
+  .digitBtn:active{ transform:scale(.97); }
 
-/* ===== 솥 물색 + 발광 + 거품 ===== */
-#cauldronGlow{
-  position:absolute;
-  left:33%;
-  top:56%;
-  width:34%;
-  height:16%;
-  border-radius:50%;
-  pointer-events:none;
-  background:transparent;
-  opacity:0;
-  transition: background .6s ease, opacity .6s ease, box-shadow .8s ease;
-  z-index:20;
-  filter: blur(0.2px);
-}
-#cauldronGlow.on{
-  opacity:.75;
-  box-shadow:
-    0 0 18px rgba(0,255,150,.55),
-    0 0 42px rgba(0,255,150,.35);
-}
+  .lockSuccess{ animation: glowGreen 0.6s ease; }
+  @keyframes glowGreen{
+    0%{ box-shadow:0 0 0px #00ff88; }
+    50%{ box-shadow:0 0 25px #00ff88; }
+    100%{ box-shadow:0 0 0px #00ff88; }
+  }
+  .lockFail{ animation: glowRed 0.4s ease; }
+  @keyframes glowRed{
+    0%{ box-shadow:0 0 0px #ff0000; }
+    50%{ box-shadow:0 0 25px #ff0000; }
+    100%{ box-shadow:0 0 0px #ff0000; }
+  }
+  .shake{ animation: shakeLock .35s ease; }
+  @keyframes shakeLock{
+    0%{transform:translateX(0)}
+    25%{transform:translateX(-6px)}
+    50%{transform:translateX(6px)}
+    75%{transform:translateX(-4px)}
+    100%{transform:translateX(0)}
+  }
 
-#bubbleLayer{
-  position:absolute;
-  left:33%;
-  top:56%;
-  width:34%;
-  height:16%;
-  overflow:hidden;
-  border-radius:50%;
-  pointer-events:none;
-  z-index:25;
-  opacity:0;
-  transition: opacity .5s ease;
-}
-#bubbleLayer.on{opacity:1}
+  /* =========================
+     ✅ 2단계 물약방 레이어
+  ========================= */
+  .potionLayer{position:absolute;inset:0;display:none;z-index:50}
+  .potionBg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
 
-.bubble{
-  position:absolute;
-  bottom:-12px;
-  width:10px;height:10px;
-  border-radius:50%;
-  background:rgba(255,255,255,.55);
-  box-shadow:0 0 10px rgba(255,255,255,.25);
-  animation: bubbleUp 1.8s linear forwards;
-}
-@keyframes bubbleUp{
-  0%{transform:translateY(0) scale(.85);opacity:.0}
-  15%{opacity:.85}
-  100%{transform:translateY(-120px) scale(1.25);opacity:0}
-}
+  /* 물약병 이미지(클릭 가능) */
+  .jar{
+    position:absolute;
+    width:18vmin; max-width:110px; min-width:70px;
+    height:auto;
+    z-index:60;
+    user-select:none;
+    -webkit-user-drag:none;
+    filter: drop-shadow(0 10px 18px rgba(0,0,0,.35));
+  }
+  .jar:active{transform:scale(.98)}
 
-/* ===== 자물쇠 숫자 버튼 ===== */
-:root{
-  --lock-x: 22%;
-  --lock-y: 50%;
-  --lock-w: 56%;
-  --lock-h: 9%;
-}
-.lockDigits{
-  position:absolute;
-  left:var(--lock-x); top:var(--lock-y);
-  width:var(--lock-w); height:var(--lock-h);
-  display:grid; grid-template-columns:repeat(4,1fr);
-  gap:4%;
-  z-index:99995;
-}
-.digitBtn{
-  border:0;border-radius:14px;
-  background:rgba(0,0,0,.45);
-  color:#fff;font-weight:900;
-  font-size:clamp(18px, 6vw, 34px);
-  box-shadow: inset 0 0 0 1px rgba(255,255,255,.14), 0 8px 18px rgba(0,0,0,.35);
-  -webkit-tap-highlight-color:transparent;
-}
-.digitBtn:active{transform:scale(.97)}
-.digitBtn:disabled{opacity:.95}
-.lockSuccess{ animation: glowGreen .6s ease; }
-@keyframes glowGreen{
- 0%{box-shadow:0 0 0px #00ff88;}
- 50%{box-shadow:0 0 25px #00ff88;}
- 100%{box-shadow:0 0 0px #00ff88;}
-}
-.lockFail{ animation: glowRed .4s ease; }
-@keyframes glowRed{
- 0%{box-shadow:0 0 0px #ff0000;}
- 50%{box-shadow:0 0 25px #ff0000;}
- 100%{box-shadow:0 0 0px #ff0000;}
-}
-.shake{ animation: shakeLock .35s ease; }
-@keyframes shakeLock{
- 0%{transform:translateX(0)}
- 25%{transform:translateX(-6px)}
- 50%{transform:translateX(6px)}
- 75%{transform:translateX(-4px)}
- 100%{transform:translateX(0)}
-}
+  /* 솥 색 변화 + 거품 */
+  .cauldronTint{
+    position:absolute;
+    left:50%; top:48%;
+    width:58vmin; height:36vmin;
+    max-width:380px; max-height:240px;
+    transform:translate(-50%,-50%);
+    border-radius:999px;
+    background:rgba(0, 180, 255, 0.20);
+    mix-blend-mode:screen;
+    pointer-events:none;
+    z-index:55;
+    opacity:0;
+    transition:opacity .25s ease, background .25s ease, filter .4s ease;
+    filter: blur(1px);
+  }
+  .cauldronTint.on{opacity:1}
+  .cauldronTint.greenGlow{
+    background:rgba(0,255,140,.28);
+    filter: blur(1px) drop-shadow(0 0 18px rgba(0,255,140,.75));
+  }
+
+  .bubbles{
+    position:absolute;
+    left:50%; top:43%;
+    width:56vmin; height:30vmin;
+    max-width:360px; max-height:200px;
+    transform:translate(-50%,-50%);
+    pointer-events:none;
+    z-index:56;
+    opacity:0;
+  }
+  .bubbles.on{opacity:1}
+  .bubble{
+    position:absolute; bottom:0;
+    width:10px;height:10px;border-radius:50%;
+    background:rgba(255,255,255,.55);
+    animation: rise 1.6s linear infinite;
+    filter: blur(.2px);
+  }
+  @keyframes rise{
+    0%{transform:translateY(0) scale(.8);opacity:.0}
+    10%{opacity:.6}
+    100%{transform:translateY(-160px) scale(1.2);opacity:0}
+  }
+
+  /* 메뉴얼 팝업 */
+  .popupDim{
+    position:absolute;inset:0;background:rgba(0,0,0,.45);
+    display:none;z-index:80;
+  }
+  .popup{
+    position:absolute;left:50%;top:50%;
+    transform:translate(-50%,-50%);
+    width:min(88vw, 420px);
+    height:auto;
+    z-index:81;
+    display:none;
+  }
+
+  /* 폭발 화면 */
+  .boomScreen{
+    position:absolute;inset:0;width:100%;height:100%;object-fit:cover;
+    display:none;z-index:90;
+  }
+
+  /* 버튼들(2단계) */
+  .pillBtn{
+    position:absolute;
+    border:0;border-radius:14px;
+    padding:12px 16px;
+    font-weight:1000;font-size:16px;
+    color:#fff;
+    background:#2b7cff;
+    box-shadow:0 10px 22px rgba(0,0,0,.45);
+    z-index:85;
+    display:none;
+  }
+  .pillBtn:active{transform:scale(.97)}
+  .btnRetry{left:50%;top:82%;transform:translateX(-50%);background:#ff3b3b}
+  .btnPour{right:14px;bottom:110px;background:#00c47a}
+  .btnLock{right:14px;bottom:60px;background:#ff4d6d}
+
+  /* 종이 화면(2단계) */
+  .paperLayer{
+    position:absolute;inset:0;display:none;z-index:95;
+    background:#000;
+  }
+  .paperImg{
+    position:absolute;inset:0;width:100%;height:100%;object-fit:contain;
+    background:#000;
+  }
+
+  /* 로딩/에러 */
+  .loading{
+    position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+    color:#fff;font-weight:900;z-index:99999;
+    background:#000;
+  }
+  .loading small{display:block;font-weight:700;opacity:.85;margin-top:8px;text-align:center;padding:0 18px}
 </style>
 </head>
 <body>
-
 <div class="game" id="game">
-  <img id="scene" class="img" alt="scene">
-  <div id="cauldronGlow"></div>
-  <div id="bubbleLayer"></div>
-  <img id="stream" alt="stream">
-  <img id="boomOverlay" src="boom.png" alt="boom">
-  <div class="hintText" id="hint"></div>
+  <img id="scene" class="bg" alt="scene" />
+
+  <div class="hint" id="hint"></div>
+
+  <div class="uiBar" id="wallUI">
+    <button class="uiBtn" id="btnL" type="button">◀</button>
+    <button class="uiBtn" id="btnC" type="button">▲</button>
+    <button class="uiBtn" id="btnR" type="button">▶</button>
+  </div>
+  <button class="nextBtn" id="btnNext" type="button">다음 ▶</button>
+
+  <!-- =========================
+       2단계 물약방 UI
+  ========================= -->
+  <div class="potionLayer" id="potionLayer">
+    <img class="potionBg" id="potionBg" src="bg_potion_room.png" alt="potion room" />
+
+    <div class="cauldronTint" id="tint"></div>
+    <div class="bubbles" id="bubbles"></div>
+
+    <!-- jars (위치: 화면 비율 기준으로 대충 “선반 위”에 깔아둠. 필요하면 숫자만 조정) -->
+    <img class="jar" id="jar_blue"  src="jar_blue.png"  alt="blue"  style="left:18%; top:63%;" />
+    <img class="jar" id="jar_brown" src="jar_brown.png" alt="brown" style="left:34%; top:63%;" />
+    <img class="jar" id="jar_black" src="jar_black.png" alt="black" style="left:50%; top:63%;" />
+    <img class="jar" id="jar_red"   src="jar_red.png"   alt="red"   style="left:66%; top:63%;" />
+    <img class="jar" id="jar_yellow"src="jar_yellow.png"alt="yellow"style="left:26%; top:76%;" />
+    <img class="jar" id="jar_pink"  src="jar_pink.png"  alt="pink"  style="left:58%; top:76%;" />
+
+    <!-- 책 아이콘(배경에 있어도, 확실히 누르라고 투명 버튼 추가) -->
+    <button class="hs" id="btnManualHot" type="button" style="left:2%; top:1%; width:18%; height:12%; z-index:82;"></button>
+
+    <!-- 메뉴얼 팝업 -->
+    <div class="popupDim" id="dim"></div>
+    <img class="popup" id="manual" src="manual_popup.png" alt="manual" />
+
+    <!-- 폭발 -->
+    <img class="boomScreen" id="boomImg" src="explosion_cauldron.png" alt="boom" />
+    <button class="pillBtn btnRetry" id="btnRetry" type="button">다시하기</button>
+
+    <!-- 성공 후 버튼 -->
+    <button class="pillBtn btnPour" id="btnPour" type="button">물약 붓기</button>
+  </div>
+
+  <!-- 종이 화면 -->
+  <div class="paperLayer" id="paperLayer">
+    <img class="paperImg" id="paperImg" alt="paper" />
+    <button class="pillBtn btnLock" id="btnGoLock" type="button">자물쇠 ▶</button>
+  </div>
+
+  <div class="loading" id="loading">
+    <div>
+      로딩 중…
+      <small>검은 화면이면 파일명(대소문자) / 확장자 / 업로드 위치 확인!</small>
+    </div>
+  </div>
 </div>
 
-<!-- 사운드 -->
+<!-- 사운드 (같은 폴더) -->
 <audio id="bgm" src="bgm.mp3" loop></audio>
 <audio id="endbgm" src="end.mp3" loop></audio>
 <audio id="tap" src="tap.mp3"></audio>
-<audio id="unlock" src="unlock.mp3"></audio>
-<audio id="mix" src="mix.mp3"></audio>
-<audio id="paper" src="paper.mp3"></audio>
-<audio id="get" src="get.mp3"></audio>
-<audio id="stage" src="stage.mp3"></audio>
 <audio id="drawer" src="drawer.mp3"></audio>
+<audio id="get" src="get.mp3"></audio>
+<audio id="unlock" src="unlock.mp3"></audio>
+<audio id="stage" src="stage.mp3"></audio>
+<audio id="paperS" src="paper.mp3"></audio>
+<audio id="mix" src="mix.mp3"></audio>
+<audio id="pourS" src="pour.mp3"></audio>
 <audio id="boomS" src="boom.mp3"></audio>
 
 <script>
-/* ===== 공통 ===== */
-const scene=document.getElementById("scene");
-const game=document.getElementById("game");
-const stream=document.getElementById("stream");
-const boomOverlay=document.getElementById("boomOverlay");
-const hint=document.getElementById("hint");
-const cauldronGlow=document.getElementById("cauldronGlow");
-const bubbleLayer=document.getElementById("bubbleLayer");
+/* =========================
+   공통 유틸
+========================= */
+const game = document.getElementById("game");
+const scene = document.getElementById("scene");
+const hint  = document.getElementById("hint");
+const loading = document.getElementById("loading");
 
-const bgm=document.getElementById("bgm");
-const endbgm=document.getElementById("endbgm");
-const tap=document.getElementById("tap");
-const unlock=document.getElementById("unlock");
-const mix=document.getElementById("mix");
-const paper=document.getElementById("paper");
-const get=document.getElementById("get");
-const stage=document.getElementById("stage");
-const drawer=document.getElementById("drawer");
-const boomS=document.getElementById("boomS");
+const wallUI = document.getElementById("wallUI");
+const btnL = document.getElementById("btnL");
+const btnC = document.getElementById("btnC");
+const btnR = document.getElementById("btnR");
+const btnNext = document.getElementById("btnNext");
 
-function s(a){ try{a.currentTime=0;a.play();}catch{} }
+const bgm = document.getElementById("bgm");
+const endbgm = document.getElementById("endbgm");
+const tap = document.getElementById("tap");
+const drawer = document.getElementById("drawer");
+const get = document.getElementById("get");
+const unlock = document.getElementById("unlock");
+const stageS = document.getElementById("stage");
+const paperS = document.getElementById("paperS");
+const mix = document.getElementById("mix");
+const pourS = document.getElementById("pourS");
+const boomS = document.getElementById("boomS");
 
-let bubbleTimer=null;
-
-function stopBubbles(){
-  if(bubbleTimer){ clearInterval(bubbleTimer); bubbleTimer=null; }
-  bubbleLayer.classList.remove("on");
-  bubbleLayer.innerHTML="";
-}
-function startBubbles(intensity=1){
-  stopBubbles();
-  bubbleLayer.classList.add("on");
-  const interval = Math.max(220, 520 - intensity*70);
-  bubbleTimer = setInterval(()=>{
-    const b=document.createElement("div");
-    b.className="bubble";
-    const size = 6 + Math.random()*10;
-    b.style.width=size+"px";
-    b.style.height=size+"px";
-    b.style.left = (Math.random()*92)+"%";
-    b.style.animationDuration = (1.3 + Math.random()*1.1) + "s";
-    bubbleLayer.appendChild(b);
-    setTimeout(()=>b.remove(), 2400);
-  }, interval);
-}
+function s(a){ try{ a.currentTime = 0; a.play(); }catch(e){} }
 
 function clearOverlays(){
-  document.querySelectorAll(".lockDigits").forEach(el=>el.remove());
   document.querySelectorAll(".hsFull").forEach(el=>el.remove());
-  document.querySelectorAll(".hsSpot").forEach(el=>el.remove());
-  document.querySelectorAll(".uiNextTemp").forEach(el=>el.remove());
+  document.querySelectorAll(".lockDigits").forEach(el=>el.remove());
 }
 
-function setScene(src, fit="cover"){
-  clearOverlays();
-  hint.textContent="";
-  scene.classList.toggle("contain", fit==="contain");
+function setScene(src){
+  // 2단계/종이 레이어는 숨김
+  hidePotion();
+  hidePaper();
+
+  scene.style.display = "block";
   scene.src = src;
 
-  // 물약/거품/발광 리셋
-  cauldronGlow.classList.remove("on");
-  cauldronGlow.style.background="transparent";
-  cauldronGlow.style.opacity=0;
-  stopBubbles();
-
-  // 폭탄 오버레이 숨김
-  boomOverlay.style.opacity=0;
+  hint.textContent = "";
+  wallUI.style.display = "none";
+  btnNext.classList.remove("show");
+  clearOverlays();
 }
 
 function fullTap(nextFn){
-  const b=document.createElement("button");
+  const b = document.createElement("button");
   b.className="hs hsFull";
   b.style.left="0"; b.style.top="0"; b.style.width="100%"; b.style.height="100%";
   b.onclick=()=>{ b.remove(); nextFn(); };
   game.appendChild(b);
 }
 
-function addHS(x,y,w,h,fn){
-  const b=document.createElement("button");
-  b.className="hs hsSpot";
-  b.style.left=x+"%"; b.style.top=y+"%";
-  b.style.width=w+"%"; b.style.height=h+"%";
-  b.onclick=fn;
-  game.appendChild(b);
+/* =========================
+   1단계: 시작/스토리/손전등
+========================= */
+function S0(){
+  setScene("s0.png");
+  hint.textContent = "";
+  fullTap(()=>{
+    s(tap);
+    // iOS는 "사용자 제스처 이후" 재생 가능
+    bgm.volume = 0.35;
+    bgm.play().catch(()=>{});
+    S1();
+  });
 }
 
-function makeBottomNext(label){
-  const b=document.createElement("button");
-  b.className="uiNext show uiNextTemp";
-  b.textContent=label;
-  game.appendChild(b);
-  return b;
+function S1(){
+  setScene("s1.png");
+  fullTap(()=>{ s(tap); F0(); });
 }
 
-/* ===== 자물쇠(성공 후 터치해야 다음) ===== */
-function lockStageWithTapToNext(answer, closedImg, openImg, nextFn){
-  setScene(closedImg, "cover");
+function F0(){
+  setScene("f0.png");
+  hint.textContent="책상을 눌러라";
+  fullTap(()=>{ s(drawer); F1(); });
+}
+function F1(){
+  setScene("k2c.png");
+  hint.textContent="서랍을 확인해라";
+  fullTap(()=>{ s(get); F2(); });
+}
+function F2(){
+  setScene("flash.png");
+  hint.textContent="손전등 획득!";
+  setTimeout(()=>WallStart(), 900);
+}
+
+/* 벽 이동 */
+let sawHintWall=false;
+function WallStart(){
+  sawHintWall=false;
+  showWall("c"); // 정면부터
+}
+function showWall(where){
+  if(where==="l"){ setScene("fl.png"); sawHintWall=true; }
+  if(where==="c"){ setScene("fc.png"); }
+  if(where==="r"){ setScene("fr.png"); }
+
+  wallUI.style.display="flex";
+  btnL.style.display="inline-block";
+  btnC.style.display="inline-block";
+  btnR.style.display="inline-block";
+
+  hint.textContent = sawHintWall ? "힌트를 찾았다!" : "어디에 힌트가 있을까…?";
+
+  btnL.onclick=()=>{ s(tap); showWall("l"); };
+  btnC.onclick=()=>{ s(tap); showWall("c"); };
+  btnR.onclick=()=>{ s(tap); showWall("r"); };
+
+  // 힌트(fl) 본 뒤에만 다음 버튼
+  if(sawHintWall) btnNext.classList.add("show");
+  else btnNext.classList.remove("show");
+
+  btnNext.onclick=()=>{
+    if(!sawHintWall) return;
+    s(tap);
+    Lock1();
+  };
+}
+
+/* =========================
+   자물쇠 공통
+   - 성공 시: 숫자 유지 + 열린 이미지로 바뀜 + "터치해야 다음"
+========================= */
+function lockStage(answer, closedImg, openImg, nextFn){
+  setScene(closedImg);
   hint.textContent="숫자를 눌러 비밀번호를 맞춰라";
 
   const wrap=document.createElement("div");
   wrap.className="lockDigits";
+
   const code=[0,0,0,0];
   const btns=[];
 
@@ -293,246 +439,297 @@ function lockStageWithTapToNext(answer, closedImg, openImg, nextFn){
       setTimeout(()=>b.classList.remove(cls), ms);
     });
   }
-  function onSuccess(){
-    btns.forEach(b=> b.disabled=true);
-    flash("lockSuccess",600);
-    scene.classList.add("shake");
-    s(unlock);
 
-    setTimeout(()=>{
-      scene.classList.remove("shake");
-      scene.src=openImg;
-      s(stage);
-      hint.textContent="성공! 화면을 터치해 다음 단계로";
-      fullTap(()=>{ s(tap); nextFn(); });
-    },500);
-  }
-  function onFail(){
-    flash("lockFail",350);
-    scene.classList.add("shake");
-    setTimeout(()=>scene.classList.remove("shake"),200);
+  function checkDone(){
+    return code.join("") === answer;
   }
 
   for(let i=0;i<4;i++){
     const b=document.createElement("button");
     b.className="digitBtn";
     b.textContent="0";
+
     b.addEventListener("pointerdown",(e)=>{
       e.preventDefault();
       if(b.disabled) return;
+
       s(tap);
       code[i]=(code[i]+1)%10;
       b.textContent=String(code[i]);
-      if(code.join("")===answer) onSuccess();
-      else onFail();
+
+      if(checkDone()){
+        // 성공: 숫자 고정
+        btns.forEach(x=>x.disabled=true);
+        flash("lockSuccess", 600);
+        s(unlock);
+
+        setTimeout(()=>{
+          scene.src = openImg;         // 열린 자물쇠로 전환
+          s(stageS);
+          hint.textContent="성공! 화면을 터치해 다음으로";
+          fullTap(()=>{ s(tap); nextFn(); });
+        }, 450);
+      }else{
+        flash("lockFail", 350);
+        scene.classList.add("shake");
+        setTimeout(()=>scene.classList.remove("shake"), 250);
+      }
     }, {passive:false});
+
     wrap.appendChild(b);
     btns.push(b);
   }
+
   game.appendChild(wrap);
 }
 
-/* ===== 물줄기 ===== */
-const colorMap={
-  blue:"q1.png", brown:"q2.png", black:"q3.png",
-  purple:"q4.png", skin:"q5.png", red:"q6.png",
-  pink:"q7.png", lime:"q8.png", yellow:"q9.png"
+function Lock1(){ lockStage("1019","k1c.png","k1o.png", PotionStage); }
+function Lock2(){ lockStage("0506","k1c.png","k1o.png", Books); }
+
+/* =========================
+   2단계: 새 물약방
+========================= */
+const potionLayer = document.getElementById("potionLayer");
+const tint = document.getElementById("tint");
+const bubbles = document.getElementById("bubbles");
+const dim = document.getElementById("dim");
+const manual = document.getElementById("manual");
+const btnManualHot = document.getElementById("btnManualHot");
+const boomImg = document.getElementById("boomImg");
+const btnRetry = document.getElementById("btnRetry");
+const btnPour = document.getElementById("btnPour");
+
+const paperLayer = document.getElementById("paperLayer");
+const paperImg = document.getElementById("paperImg");
+const btnGoLock = document.getElementById("btnGoLock");
+
+function showPotion(){
+  scene.style.display="none";
+  clearOverlays();
+  hint.textContent="물약을 완성해 종이에 부어라";
+  potionLayer.style.display="block";
+}
+function hidePotion(){
+  potionLayer.style.display="none";
+  boomImg.style.display="none";
+  btnRetry.style.display="none";
+  btnPour.style.display="none";
+  dim.style.display="none";
+  manual.style.display="none";
+  tint.classList.remove("on","greenGlow");
+  bubbles.classList.remove("on");
+  bubbles.innerHTML="";
+}
+
+function showPaper(src){
+  paperLayer.style.display="block";
+  paperImg.src = src;
+  btnGoLock.style.display="none";
+}
+function hidePaper(){
+  paperLayer.style.display="none";
+  btnGoLock.style.display="none";
+}
+
+function makeBubbles(){
+  bubbles.innerHTML="";
+  for(let i=0;i<10;i++){
+    const d=document.createElement("div");
+    d.className="bubble";
+    d.style.left = (8 + Math.random()*84) + "%";
+    d.style.animationDelay = (Math.random()*1.2) + "s";
+    d.style.animationDuration = (1.2 + Math.random()*1.0) + "s";
+    d.style.width = d.style.height = (6 + Math.random()*10) + "px";
+    bubbles.appendChild(d);
+  }
+  bubbles.classList.add("on");
+}
+
+let picked = [];
+const RECIPE = ["blue","brown","black"]; // 정답
+
+const jarEls = {
+  blue:  document.getElementById("jar_blue"),
+  brown: document.getElementById("jar_brown"),
+  black: document.getElementById("jar_black"),
+  red:   document.getElementById("jar_red"),
+  yellow:document.getElementById("jar_yellow"),
+  pink:  document.getElementById("jar_pink"),
 };
-function playStream(key){
-  stream.src = colorMap[key];
-  stream.style.opacity=1;
-  stream.style.animation="none"; void stream.offsetWidth;
-  stream.style.animation="dropLong 1.1s linear forwards";
-  setTimeout(()=>{ stream.style.opacity=0; }, 1150);
-}
 
-/* ===== 솥 물색(선택할수록 진해짐) ===== */
-const cauldronTint={
-  blue:"rgba(0,120,255,.35)",
-  brown:"rgba(120,70,20,.35)",
-  black:"rgba(0,0,0,.42)",
-  red:"rgba(255,0,0,.33)",
-  yellow:"rgba(255,220,0,.33)",
-  purple:"rgba(160,0,255,.33)",
-  skin:"rgba(255,210,180,.33)",
-  pink:"rgba(255,80,150,.33)",
-  lime:"rgba(120,255,0,.33)"
+const tintColor = {
+  blue:   "rgba(0,170,255,.22)",
+  brown:  "rgba(170,120,60,.22)",
+  black:  "rgba(40,40,55,.18)",
+  red:    "rgba(255,70,70,.22)",
+  yellow: "rgba(255,220,0,.22)",
+  pink:   "rgba(255,80,200,.20)",
 };
-function setCauldronColor(key, level){
-  const c = cauldronTint[key] || "rgba(0,255,200,.25)";
-  cauldronGlow.style.background = c;
-  cauldronGlow.style.opacity = Math.min(0.25 + level*0.14, 0.78);
+
+function PotionStage(){
+  showPotion();
+  resetPotion();
+
+  // 메뉴얼 핫존
+  btnManualHot.onclick = ()=>{
+    s(tap);
+    openManual();
+  };
+
+  // 병 클릭
+  Object.keys(jarEls).forEach(k=>{
+    jarEls[k].onclick = ()=>selectJar(k);
+  });
+
+  // 다시하기
+  btnRetry.onclick = ()=>{
+    s(tap);
+    resetPotion();
+  };
+
+  // 물약 붓기
+  btnPour.onclick = ()=>{
+    s(tap);
+    s(paperS);
+    // 종이 화면
+    hidePotion();
+    showPaper("paper_clean.png");
+    hint.textContent="종이를 눌러라";
+    // 종이 1회 클릭 -> revealed
+    paperLayer.onclick = ()=>{
+      paperLayer.onclick = null;
+      s(pourS);
+      showPaper("paper_revealed.png");
+      hint.textContent="힌트가 나타났다!";
+      // 자물쇠 버튼 생성
+      btnGoLock.style.display="block";
+      btnGoLock.onclick = ()=>{
+        s(tap);
+        hidePaper();
+        Lock2();
+      };
+    };
+  };
 }
 
-/* ===== 게임 흐름 (여기서는 1단계 자물쇠까지는 바로 간다고 가정) ===== */
-function Start(){
-  // 네 프로젝트에서 이미 S0/S1/손전등/벽이 완성되어 있으면
-  // 여기 Start() 대신 그 흐름 끝에서 Lock1() 호출하면 됨.
-  // 지금은 테스트용으로 바로 1단계 자물쇠로 시작.
-  bgm.volume=.35; bgm.play().catch(()=>{});
-  Lock1();
+function openManual(){
+  // 가운데 매뉴얼
+  s(paperS);
+  dim.style.display="block";
+  manual.style.display="block";
+  // 아무 데나 누르면 닫힘
+  dim.onclick = closeManual;
+  manual.onclick = closeManual;
+}
+function closeManual(){
+  s(paperS);
+  dim.style.display="none";
+  manual.style.display="none";
 }
 
-function Lock1(){
-  lockStageWithTapToNext("1019","k1c.png","k1o.png",Potion);
+function resetPotion(){
+  picked = [];
+  boomImg.style.display="none";
+  btnRetry.style.display="none";
+  btnPour.style.display="none";
+  tint.classList.remove("greenGlow");
+  tint.classList.add("on");
+  tint.style.background = "rgba(0, 180, 255, 0.20)"; // 기본 물색
+  makeBubbles();
 }
 
-/* ===== 2단계: 물약방(요구사항 그대로) ===== */
-function Potion(){
-  let selected = new Set();
-  let lastKey = null;
-  let mixLevel = 0;
-  let solved = false;
+function explode(){
+  s(boomS);
+  boomImg.style.display="block";
+  btnRetry.style.display="block";
+  btnPour.style.display="none";
+  hint.textContent="콰광!! 다시 시도해라";
+  // 클릭 방지(폭발 중)
+  Object.values(jarEls).forEach(el=>el.style.pointerEvents="none");
+  setTimeout(()=>{
+    Object.values(jarEls).forEach(el=>el.style.pointerEvents="auto");
+  }, 800);
+}
 
-  showP0();
+function isRecipeOk(){
+  const a=[...picked].sort().join(",");
+  const b=[...RECIPE].sort().join(",");
+  return a===b;
+}
 
-  function resetToP0(){
-    selected = new Set();
-    lastKey = null;
-    mixLevel = 0;
-    solved = false;
-    showP0();
-  }
+function selectJar(color){
+  // 폭발 화면 중이면 무시
+  if(boomImg.style.display==="block") return;
 
-  function showP0(){
-    // ✅ 클릭 정확도를 위해 contain
-    setScene("p0.png","contain");
-    hint.textContent = solved ? "정답이다! 화면을 터치해 종이를 확인하자" : "물약을 3개 섞어 힌트를 찾아라";
+  s(mix);
+  picked.push(color);
 
-    // 거품은 선택할수록 빨라짐
-    startBubbles(Math.min(6, 1 + mixLevel));
+  // 솥 물색은 "마지막 선택 색"으로 바뀌는 느낌
+  tint.classList.add("on");
+  tint.style.background = tintColor[color] || "rgba(0,180,255,.2)";
+  makeBubbles();
 
-    // ✅ 책(설명서) - 왼쪽 하단
-    addHS(5, 73, 20, 20, ()=>{
-      s(paper);
-      showManual();
-    });
+  // 3개 선택했을 때 판정 (3개가 아니면 계속 선택 가능)
+  if(picked.length < 3) return;
 
-    // ✅ 병 좌표(이미지 기준)
-    // 정답 3개
-    addBottle(12, 28, "black");   // 검정(정답)
-    addBottle(42, 30, "brown");   // 갈색(정답)
-    addBottle(33, 63, "blue");    // 파랑(정답)
-
-    // 오답들
-    addBottle(20, 35, "pink");    // 핑크
-    addBottle(55, 28, "purple");  // 보라
-    addBottle(66, 35, "skin");    // 살색
-    addBottle(8,  63, "red");     // 빨강(하단)
-    addBottle(20, 67, "lime");    // 연두
-    addBottle(48, 63, "yellow");  // 노랑(하단)
-
-    // 상단 중복(요청)
-    addBottle(68, 30, "skin");    // 살색 중복
-    addBottle(76, 30, "yellow");  // 노랑 중복
-    addBottle(86, 30, "red");     // 빨강 중복
-
-    // ✅ 정답이면 “다음버튼 생성” + “화면 터치하면 종이”
-    if(solved){
-      cauldronGlow.classList.add("on"); // 초록빛 발광은 아래에서 켬
-      const nextBtn = makeBottomNext("다음 ▶");
-      nextBtn.style.display="block";
-
-      // 버튼 눌러도 되고, 화면 아무데나 터치해도 넘어가게
-      nextBtn.onclick = ()=>{ s(tap); showPaper0(); };
-      fullTap(()=>{ s(tap); showPaper0(); });
-    }
-  }
-
-  function showManual(){
-    setScene("m0.png","contain");
-    hint.textContent="화면을 터치하면 닫힘";
-    fullTap(()=>{ s(tap); showP0(); });
-  }
-
-  function addBottle(x,y,key){
-    addHS(x, y, 12, 16, ()=>{
-      if(solved) return;
-
-      s(mix);
-      lastKey = key;
-      selected.add(key);
-      mixLevel++;
-
-      // 액체 떨어짐 + 솥 색 변화 + 거품 속도 증가
-      playStream(key);
-      setCauldronColor(key, mixLevel);
-      startBubbles(Math.min(6, 1 + mixLevel));
-
-      checkMix();
-    });
-  }
-
-  function checkMix(){
-    const ok =
-      selected.size===3 &&
-      selected.has("blue") &&
-      selected.has("brown") &&
-      selected.has("black");
-
-    // 3개 이상인데 정답이 아니면 폭탄
-    if(selected.size>=3 && !ok){
-      bomb();
-      return;
-    }
-
-    // 정답이면: 솥이 천천히 초록빛으로 빛나고 다음버튼 생성 + 터치로 종이
-    if(ok){
-      solved = true;
-      s(stage);
-
-      // 초록색으로 천천히 전환
-      cauldronGlow.style.background = "rgba(0,255,150,.38)";
-      cauldronGlow.style.opacity = 0.75;
-      cauldronGlow.classList.add("on");
-
-      hint.textContent="정답이다!";
-      showP0();
-    }
-  }
-
-  function bomb(){
-    s(boomS);
-    setScene("p0.png","contain");          // 배경 유지하면서
-    boomOverlay.style.opacity=1;           // 폭탄 오버레이만 올리기
-    hint.textContent="뻥! 다시 해!";
-    stopBubbles();
-    setTimeout(()=>{ boomOverlay.style.opacity=0; resetToP0(); }, 900);
-  }
-
-  // ✅ “화면 터치하면 종이(pp0)” → “화면 터치하면 물약 부어진 종이(pp1)”
-  // ✅ pp1에서 “다음버튼 생성” + “화면 터치하면 자물쇠”
-  function showPaper0(){
-    setScene("pp0.png","contain");
-    hint.textContent="화면을 터치해 종이를 확인해라";
-    fullTap(()=>{ s(paper); showPaper1(); });
-  }
-
-  function showPaper1(){
-    setScene("pp1.png","contain");
-    hint.textContent="0506…";
-    const nextBtn = makeBottomNext("다음 ▶");
-    nextBtn.onclick = ()=>{ s(tap); Lock2(); };
-    fullTap(()=>{ s(tap); Lock2(); });
-  }
-
-  function Lock2(){
-    lockStageWithTapToNext("0506","k1c.png","k1o.png",Books);
+  if(isRecipeOk()){
+    // 성공: 초록빛 + 버튼 생성
+    s(stageS);
+    hint.textContent="정답! 물약을 완성했다";
+    tint.classList.add("greenGlow");
+    btnPour.style.display="block";
+  }else{
+    explode();
   }
 }
 
-/* ===== 3단계(여기부터는 너 기존대로 이어붙이면 됨) ===== */
+/* =========================
+   3단계: 책장(간단 버전)
+   - b0.png에서 '자기결정' 위치를 대략 핫존으로 잡음
+   - 다른 책 누르면 "땡!"
+   - 정답 누르면 key.png -> 터치 -> 마지막 자물쇠
+========================= */
 function Books(){
-  setScene("b0.png","cover");
+  setScene("b0.png");
   hint.textContent="세령공주에게 준 책을 찾아라";
-  // 좌표는 b0 이미지에 맞춰 조절 필요
-  addHS(10,60,30,10,()=>{ s(tap); hint.textContent="땡!"; setTimeout(()=>hint.textContent="세령공주에게 준 책을 찾아라",700); });
-  addHS(10,72,30,10,()=>{ s(tap); hint.textContent="땡!"; setTimeout(()=>hint.textContent="세령공주에게 준 책을 찾아라",700); });
-  addHS(10,84,30,10,()=>{
+
+  // 다른 책(대충 두 구역)
+  addHot(10, 55, 35, 12, ()=>wrongBook());
+  addHot(10, 70, 35, 12, ()=>wrongBook());
+
+  // 정답(자기결정) (필요하면 좌표 조정)
+  addHot(10, 84, 35, 12, ()=>{
     s(get);
-    setScene("key.png","cover");
-    hint.textContent="열쇠 획득!";
-    fullTap(()=>End());
+    setScene("key.png");
+    hint.textContent="열쇠 획득! 화면 터치";
+    fullTap(()=>{ s(tap); Lock3(); });
+  });
+
+  function wrongBook(){
+    s(tap);
+    hint.textContent="땡!";
+    setTimeout(()=>hint.textContent="세령공주에게 준 책을 찾아라", 650);
+  }
+
+  function addHot(x,y,w,h,fn){
+    const b=document.createElement("button");
+    b.className="hs";
+    b.style.left=x+"%"; b.style.top=y+"%";
+    b.style.width=w+"%"; b.style.height=h+"%";
+    b.onclick=fn;
+    game.appendChild(b);
+  }
+}
+
+/* 마지막 자물쇠 */
+function Lock3(){
+  setScene("k3c.png");
+  hint.textContent="화면을 터치해 자물쇠를 열어라";
+  fullTap(()=>{
+    s(unlock);
+    setScene("k3o.png");
+    hint.textContent="열렸다!";
+    setTimeout(()=>End(), 900);
   });
 }
 
@@ -540,10 +737,34 @@ function End(){
   bgm.pause(); bgm.currentTime=0;
   endbgm.volume=0.5;
   endbgm.play().catch(()=>{});
-  setScene("end.png","cover");
+  setScene("end.png");
+  hint.textContent="";
 }
 
-Start();
+/* =========================
+   로딩(검은화면 방지용)
+   - 핵심 이미지 몇 장만 미리 체크
+========================= */
+const PRELOAD = [
+  "s0.png","s1.png","f0.png","k1c.png","k1o.png",
+  "bg_potion_room.png","jar_blue.png","jar_brown.png","jar_black.png",
+  "paper_clean.png","paper_revealed.png"
+];
+
+function preloadAll(list){
+  let ok=0;
+  return Promise.all(list.map(src=>new Promise((res)=>{
+    const im=new Image();
+    im.onload=()=>{ ok++; res(true); };
+    im.onerror=()=>{ console.log("missing:",src); res(false); };
+    im.src=src;
+  }))).then(()=>ok);
+}
+
+preloadAll(PRELOAD).then(()=>{
+  loading.style.display="none";
+  S0();
+});
 </script>
 </body>
 </html>
