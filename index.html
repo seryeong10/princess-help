@@ -41,21 +41,21 @@ html,body{margin:0;height:100%;background:#000;overflow:hidden}
 <div class="game" id="game">
 <img id="scene" class="img">
 <img id="stream">
-<img id="boom" src="img/boom.png">
+<img id="boom" src="boom.png">
 </div>
 
 <!-- 사운드 -->
-<audio id="bgm" src="snd/bgm.mp3" loop></audio>
-<audio id="endbgm" src="snd/end.mp3" loop></audio>
-<audio id="tap" src="snd/tap.mp3"></audio>
-<audio id="unlock" src="snd/unlock.mp3"></audio>
-<audio id="mix" src="snd/mix.mp3"></audio>
-<audio id="pour" src="snd/pour.mp3"></audio>
-<audio id="paper" src="snd/paper.mp3"></audio>
-<audio id="get" src="snd/get.mp3"></audio>
-<audio id="stage" src="snd/stage.mp3"></audio>
-<audio id="drawer" src="snd/drawer.mp3"></audio>
-<audio id="boomS" src="snd/boom.mp3"></audio>
+<audio id="bgm" src="bgm.mp3" loop></audio>
+<audio id="endbgm" src="end.mp3" loop></audio>
+<audio id="tap" src="tap.mp3"></audio>
+<audio id="unlock" src="unlock.mp3"></audio>
+<audio id="mix" src="mix.mp3"></audio>
+<audio id="pour" src="pour.mp3"></audio>
+<audio id="paper" src="paper.mp3"></audio>
+<audio id="get" src="get.mp3"></audio>
+<audio id="stage" src="stage.mp3"></audio>
+<audio id="drawer" src="drawer.mp3"></audio>
+<audio id="boomS" src="boom.mp3"></audio>
 
 <script>
 const scene=document.getElementById("scene");
@@ -91,7 +91,7 @@ function setScene(src){scene.src=src;clearHS();}
 
 /* 시작 */
 function S0(){
- setScene("img/s0.png");
+ setScene("s0.png");
  addHS(0,0,100,100,()=>{
   s(tap);
   bgm.volume=.35;
@@ -101,37 +101,37 @@ function S0(){
 }
 
 function S1(){
- setScene("img/s1.png");
+ setScene("s1.png");
  addHS(0,0,100,100,()=>{s(tap);F0();});
 }
 
 /* 손전등 방 */
 function F0(){
- setScene("img/f0.png");
+ setScene("f0.png");
  addHS(30,55,40,25,()=>{s(drawer);F1();});
 }
 
 function F1(){
- setScene("img/k2c.png");
+ setScene("k2c.png");
  addHS(35,60,30,20,()=>{s(get);F2();});
 }
 
 function F2(){
- setScene("img/k3c.png");
+ setScene("k3c.png");
  setTimeout(()=>Wall(),1000);
 }
 
 function Wall(){
- setScene("img/fl.png");
- addHS(5,85,25,10,()=>{s(tap);setScene("img/fl.png");WallBtns(false);});
- addHS(37,85,25,10,()=>{s(tap);setScene("img/fc.png");WallBtns(true);});
- addHS(70,85,25,10,()=>{s(tap);setScene("img/fr.png");WallBtns(false);});
+ setScene("fl.png");
+ addHS(5,85,25,10,()=>{s(tap);setScene("fl.png");WallBtns(false);});
+ addHS(37,85,25,10,()=>{s(tap);setScene("fc.png");WallBtns(true);});
+ addHS(70,85,25,10,()=>{s(tap);setScene("fr.png");WallBtns(false);});
 }
 
 function WallBtns(found){
- addHS(5,85,25,10,()=>{setScene("img/fl.png");WallBtns(found);});
- addHS(37,85,25,10,()=>{setScene("img/fc.png");WallBtns(true);});
- addHS(70,85,25,10,()=>{setScene("img/fr.png");WallBtns(found);});
+ addHS(5,85,25,10,()=>{setScene("fl.png");WallBtns(found);});
+ addHS(37,85,25,10,()=>{setScene("fc.png");WallBtns(true);});
+ addHS(70,85,25,10,()=>{setScene("fr.png");WallBtns(found);});
  if(found){
   addHS(30,95,40,5,()=>{s(unlock);Lock1();});
  }
@@ -139,14 +139,14 @@ function WallBtns(found){
 
 /* 자물쇠 1 (1019) */
 function Lock1(){
- setScene("img/k1c.png");
- mountLock("1019","img/k1o.png",Potion);
+ setScene("k1c.png");
+ mountLock("1019","k1o.png",Potion);
 }
 
 /* 자물쇠 2 (0506) */
 function Lock2(){
- setScene("img/k1c.png");
- mountLock("0506","img/k1o.png",Books);
+ setScene("k1c.png");
+ mountLock("0506","k1o.png",Books);
 }
 
 /* 숫자 로직 */
@@ -182,7 +182,7 @@ const potionMap={
 
 function Potion(){
  picked=[];
- setScene("img/p0.png");
+ setScene("p0.png");
 
  addHS(10,60,12,15,()=>drop("blue"));
  addHS(25,60,12,15,()=>drop("brown"));
@@ -195,18 +195,18 @@ function Potion(){
 
  addHS(75,10,20,10,()=>{
   s(paper);
-  setScene("img/m0.png");
+  setScene("m0.png");
   addHS(0,0,100,100,()=>Potion());
  });
 
  addHS(10,90,20,8,()=>{
   s(paper);
-  setScene("img/pp0.png");
+  setScene("pp0.png");
   addHS(70,85,25,10,()=>{
    s(pour);
    if(picked.sort().join()==="black,brown,blue"){
     s(stage);
-    setScene("img/pp1.png");
+    setScene("pp1.png");
     addHS(0,0,100,100,()=>Lock2());
    }else{
     s(boomS);
@@ -228,24 +228,24 @@ function drop(color){
 
 /* 책장 */
 function Books(){
- setScene("img/b0.png");
+ setScene("b0.png");
 
  addHS(10,60,30,10,()=>{s(tap);});
  addHS(10,72,30,10,()=>{s(tap);});
 
  addHS(10,84,30,10,()=>{
   s(get);
-  setScene("img/key.png");
+  setScene("key.png");
   addHS(0,0,100,100,()=>Lock3());
  });
 }
 
 /* 마지막 자물쇠 */
 function Lock3(){
- setScene("img/k3c.png");
+ setScene("k3c.png");
  addHS(0,0,100,100,()=>{
   s(unlock);
-  setScene("img/k3o.png");
+  setScene("k3o.png");
   setTimeout(()=>End(),800);
  });
 }
@@ -254,7 +254,7 @@ function Lock3(){
 function End(){
  bgm.pause();
  endbgm.play();
- setScene("img/end.png");
+ setScene("end.png");
 }
 
 S0();
