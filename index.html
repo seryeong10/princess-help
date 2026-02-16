@@ -58,10 +58,10 @@ html,body{margin:0;height:100%;background:#000;overflow:hidden}
    ✅ 자물쇠 숫자 버튼 (여기 4개 값만 맞추면 됨)
 ========================= */
 :root{
-  --lock-x: 26%;
-  --lock-y: 56%;
-  --lock-w: 48%;
-  --lock-h: 10%;
+  --lock-x: 22%;
+  --lock-y: 50%;
+  --lock-w: 56%;
+  --lock-h: 9%;
 }
 
 .lockDigits{
@@ -72,7 +72,7 @@ html,body{margin:0;height:100%;background:#000;overflow:hidden}
  height:var(--lock-h);
  display:grid;
  grid-template-columns:repeat(4,1fr);
- gap:6%;
+ gap:4%;
  z-index:9999;
  pointer-events:auto;
 }
@@ -83,7 +83,7 @@ html,body{margin:0;height:100%;background:#000;overflow:hidden}
  background:rgba(0,0,0,.45);
  color:#fff;
  font-weight:900;
- font-size:30px;
+ font-size:clamp(18px, 6vw, 34px); border-radius: 14px;
  box-shadow: inset 0 0 0 1px rgba(255,255,255,.14), 0 8px 18px rgba(0,0,0,.35);
  -webkit-tap-highlight-color:transparent;
 }
@@ -298,16 +298,28 @@ function lockStage(answer, closedImg, openImg, nextFn){
       const str=code.join("");
 
       if(str===answer){
-        flash("lockSuccess", 600);
-        scene.classList.add("shake");
-        s(unlock);
+  // ✅ 버튼 더 이상 못 누르게(숫자 고정)
+  btns.forEach(b=> b.disabled = true);
 
-        setTimeout(()=>{
-          scene.classList.remove("shake");
-          scene.src=openImg;
-          s(stage);
-          setTimeout(()=>nextFn(),600);
-        },500);
+  flash("lockSuccess", 600);
+  scene.classList.add("shake");
+  s(unlock);
+
+  setTimeout(()=>{
+    scene.classList.remove("shake");
+
+    // ✅ 열린 자물쇠 사진으로 전환 (숫자 오버레이 유지됨)
+    scene.src = openImg;
+    s(stage);
+
+    // ✅ “터치해서 다음” 안내
+    hint.textContent = "열렸다! 화면을 터치해 다음으로";
+
+    // ✅ 여기서부터는 자동 진행 X, 터치해야 다음 스테이지
+    fullTap(()=>{ s(tap); nextFn(); });
+
+  }, 500);
+}
 
       }else{
         flash("lockFail", 400);
