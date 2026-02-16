@@ -1,0 +1,579 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
+<title>세령공주 구출 작전</title>
+<style>
+  :root{
+    --safe-top: env(safe-area-inset-top);
+    --safe-bot: env(safe-area-inset-bottom);
+  }
+  html, body { margin:0; height:100%; background:#000; }
+  body { font-family: -apple-system, system-ui, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif; overflow:hidden; }
+
+  .game{
+    position:fixed; inset:0;
+    padding-top: var(--safe-top);
+    padding-bottom: var(--safe-bot);
+    background:#000;
+  }
+  .img{
+    position:absolute; inset:0;
+    width:100%; height:100%;
+    object-fit:cover;
+  }
+
+  /* 투명 핫스팟 */
+  .hs{
+    position:absolute;
+    border:0; padding:0;
+    background:rgba(255,255,255,0);
+    -webkit-tap-highlight-color: transparent;
+  }
+  .hs:active{ transform:scale(0.98); }
+
+  /* 디버그 모드: 핫스팟 보이게 */
+  .debug .hs{ outline:2px dashed rgba(255,0,0,.7); background: rgba(255,0,0,.12); }
+
+  /* 오버레이(설명서 등) */
+  .ov{
+    position:absolute; inset:0;
+    display:none;
+  }
+  .ov.show{ display:block; }
+
+  /* 자물쇠 숫자 슬롯 오버레이 */
+  .mask{
+    position:absolute;
+    background: rgba(10,10,10,0.92);
+    border-radius: 10px;
+    box-shadow: inset 0 0 0 2px rgba(255,255,255,0.08);
+  }
+  .digits{
+    position:absolute;
+    display:grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 6%;
+    padding: 4% 6%;
+    align-items:center;
+  }
+
+  /* 물줄기 */
+  #stream{
+    position:absolute;
+    left:50%;
+    top:12%;
+    width:28%;
+    height:auto;
+    transform: translateX(-50%) translateY(-40px);
+    opacity:0;
+    pointer-events:none;
+  }
+  @keyframes drop {
+    0%   { transform: translateX(-50%) translateY(-60px); opacity: 0; }
+    10%  { opacity: 1; }
+    100% { transform: translateX(-50%) translateY(420px); opacity: 0; }
+  }
+
+  /* 폭탄 */
+  #boom{
+    position:absolute; inset:0;
+    width:100%; height:100%;
+    object-fit:cover;
+    opacity:0;
+    pointer-events:none;
+    transition: opacity 120ms ease;
+  }
+
+  /* 엔딩 타이핑/하트 */
+  #endingText{
+    position:absolute;
+    left:0; right:0;
+    bottom: 12%;
+    text-align:center;
+    color:#fff;
+    font-weight:900;
+    font-size: 24px;
+    letter-spacing: .5px;
+    text-shadow: 0 2px 12px rgba(0,0,0,.85);
+    padding: 0 16px;
+  }
+  .heart{
+    position:fixed;
+    pointer-events:none;
+    animation: float 3s linear forwards;
+  }
+  @keyframes float{
+    from{ transform: translateY(0); opacity: 1; }
+    to  { transform: translateY(-320px); opacity: 0; }
+  }
+</style>
+</head>
+<body>
+
+<div class="game" id="game">
+  <img class="img" id="scene" alt="scene" />
+
+  <!-- 오버레이(설명서 등) -->
+  <div class="ov" id="ov">
+    <img class="img" id="ovImg" alt="overlay" />
+    <button class="hs" id="ovClose" type="button"></button>
+  </div>
+
+  <!-- 물줄기/폭탄 (물약 스테이지에서만 사용) -->
+  <img id="stream" alt="stream" />
+  <img id="boom" src="img/boom.png" alt="boom" />
+  
+  <!-- 엔딩 텍스트 -->
+  <div id="endingText"></div>
+</div>
+
+<!-- 사운드 -->
+<audio id="bgm" src="snd/bgm.mp3" loop></audio>
+<audio id="endbgm" src="snd/end.mp3" loop></audio>
+<audio id="tap" src="snd/tap.mp3"></audio>
+<audio id="drw" src="snd/drw.mp3"></audio>
+<audio id="lock" src="snd/lock.mp3"></audio>
+<audio id="pour" src="snd/pour.mp3"></audio>
+<audio id="paper" src="snd/paper.mp3"></audio>
+<audio id="key" src="snd/key.mp3"></audio>
+<audio id="boomS" src="snd/boom.mp3"></audio>
+<audio id="ok" src="snd/ok.mp3"></audio>
+
+<script>
+/* =========================
+   공용 유틸
+========================= */
+const $ = (id)=>document.getElementById(id);
+const game = $("game");
+const scene = $("scene");
+const ov = $("ov");
+const ovImg = $("ovImg");
+const ovClose = $("ovClose");
+const stream = $("stream");
+const boom = $("boom");
+const endingText = $("endingText");
+
+const A = {
+  bgm: $("bgm"),
+  endbgm: $("endbgm"),
+  tap: $("tap"),
+  drw: $("drw"),
+  lock: $("lock"),
+  pour: $("pour"),
+  paper: $("paper"),
+  key: $("key"),
+  boom: $("boomS"),
+  ok: $("ok"),
+};
+
+function sfx(a){
+  try{ a.currentTime = 0; a.play(); }catch{}
+}
+function startBgm(){
+  A.bgm.volume = 0.35;
+  A.bgm.play().catch(()=>{});
+}
+function toEndBgm(){
+  A.bgm.pause(); A.bgm.currentTime = 0;
+  A.endbgm.volume = 0.5;
+  A.endbgm.play().catch(()=>{});
+}
+
+let hsEls = [];
+function clearHS(){
+  hsEls.forEach(el=>el.remove());
+  hsEls = [];
+}
+function addHS({x,y,w,h, onTap}){
+  const b = document.createElement("button");
+  b.type = "button";
+  b.className = "hs";
+  b.style.left = x + "%";
+  b.style.top = y + "%";
+  b.style.width = w + "%";
+  b.style.height = h + "%";
+  b.addEventListener("click", (e)=>{ e.preventDefault(); onTap?.(); });
+  game.appendChild(b);
+  hsEls.push(b);
+  return b;
+}
+function setScene(src, hotspots=[]){
+  endingText.textContent = "";
+  stream.style.opacity = 0;
+  boom.style.opacity = 0;
+  scene.src = src;
+  closeOverlay();
+  clearHS();
+  hotspots.forEach(addHS);
+}
+
+function openOverlay(src, closeRect){
+  ovImg.src = src;
+  ov.classList.add("show");
+  ovClose.style.left = closeRect.x + "%";
+  ovClose.style.top = closeRect.y + "%";
+  ovClose.style.width = closeRect.w + "%";
+  ovClose.style.height = closeRect.h + "%";
+}
+function closeOverlay(){
+  ov.classList.remove("show");
+}
+ovClose.addEventListener("click", ()=>{ sfx(A.tap); closeOverlay(); });
+
+function shake(){
+  game.animate([
+    { transform:"translateX(0)" },
+    { transform:"translateX(-10px)" },
+    { transform:"translateX(10px)" },
+    { transform:"translateX(-8px)" },
+    { transform:"translateX(0)" },
+  ], { duration: 280 });
+}
+
+/* =========================
+   자물쇠 슬롯(숫자 굴림)
+   - 이미지 위에 숫자 슬롯을 오버레이해서 “굴러감” 연출
+========================= */
+function mountLock({closedImg, openImg, answer, onSolved}){
+  // 숫자 겹침 방지용 마스크(좌표는 너 이미지에 맞게 조정)
+  // ★ 숫자창 위치가 다르면 여기만 바꾸면 됨
+  const maskRect = { x: 31, y: 44, w: 38, h: 15 };
+  const digitsRect = { x: 31, y: 44, w: 38, h: 15 };
+
+  const mask = document.createElement("div");
+  mask.className = "mask";
+  mask.style.left = maskRect.x + "%";
+  mask.style.top = maskRect.y + "%";
+  mask.style.width = maskRect.w + "%";
+  mask.style.height = maskRect.h + "%";
+
+  const digits = document.createElement("div");
+  digits.className = "digits";
+  digits.style.left = digitsRect.x + "%";
+  digits.style.top = digitsRect.y + "%";
+  digits.style.width = digitsRect.w + "%";
+  digits.style.height = digitsRect.h + "%";
+
+  game.appendChild(mask);
+  game.appendChild(digits);
+  hsEls.push(mask, digits);
+
+  let code = ["0","0","0","0"];
+
+  function nextDigit(d){ return String((Number(d)+1)%10); }
+
+  function makeWheel(i){
+    const btn = document.createElement("button");
+    btn.type="button";
+    btn.className="hs";              // 투명 버튼처럼 눌리게
+    btn.style.position="relative";
+    btn.style.width="100%";
+    btn.style.height="100%";
+    btn.style.background="rgba(255,255,255,0.06)";
+    btn.style.borderRadius="8px";
+    btn.style.boxShadow="inset 0 0 0 1px rgba(255,255,255,0.10)";
+
+    const viewport = document.createElement("div");
+    viewport.style.position="absolute";
+    viewport.style.inset="0";
+    viewport.style.overflow="hidden";
+    viewport.style.borderRadius="8px";
+
+    const strip = document.createElement("div");
+    strip.style.position="absolute";
+    strip.style.left="0";
+    strip.style.top="0";
+    strip.style.width="100%";
+    strip.style.height="200%";
+    strip.style.transition="transform 140ms ease";
+
+    const a = document.createElement("div");
+    const b = document.createElement("div");
+    [a,b].forEach(x=>{
+      x.style.height="50%";
+      x.style.display="flex";
+      x.style.alignItems="center";
+      x.style.justifyContent="center";
+      x.style.color="#fff";
+      x.style.fontWeight="900";
+      x.style.fontSize="clamp(18px, 5vw, 28px)";
+      x.style.textShadow="0 2px 8px rgba(0,0,0,0.8)";
+      x.style.userSelect="none";
+    });
+
+    a.textContent = code[i];
+    b.textContent = nextDigit(code[i]);
+
+    strip.appendChild(a);
+    strip.appendChild(b);
+    viewport.appendChild(strip);
+    btn.appendChild(viewport);
+
+    btn.addEventListener("click", ()=>{
+      const cur = code[i];
+      const nxt = nextDigit(cur);
+      code[i] = nxt;
+
+      sfx(A.tap);
+
+      a.textContent = cur;
+      b.textContent = nxt;
+      strip.style.transition="none";
+      strip.style.transform="translateY(0%)";
+      void strip.offsetWidth;
+      strip.style.transition="transform 140ms ease";
+      strip.style.transform="translateY(-50%)";
+
+      setTimeout(()=>{
+        a.textContent = nxt;
+        b.textContent = nextDigit(nxt);
+        strip.style.transition="none";
+        strip.style.transform="translateY(0%)";
+      }, 160);
+
+      if(code.join("") === answer){
+        sfx(A.lock);
+        // 열린 자물쇠로 전환
+        scene.src = openImg;
+        // 잠깐 후 다음
+        setTimeout(()=>onSolved?.(), 700);
+      }
+    });
+
+    return btn;
+  }
+
+  digits.innerHTML = "";
+  for(let i=0;i<4;i++){
+    digits.appendChild(makeWheel(i));
+  }
+}
+
+/* =========================
+   물약 드롭
+========================= */
+const POTION_MAP = {
+  blue:"b", brown:"br", black:"bk",
+  red:"r", green:"g", yellow:"y",
+  pink:"pk", white:"w",
+};
+
+let picked = [];
+function dropPotion(colorKey){
+  sfx(A.pour);
+  picked.push(colorKey);
+
+  const code = POTION_MAP[colorKey];
+  if(!code) return;
+
+  stream.src = `img/stream/${code}.png`;
+  stream.style.animation = "none";
+  void stream.offsetWidth;
+  stream.style.animation = "drop 650ms ease forwards";
+}
+
+function failBoom(){
+  sfx(A.boom);
+  boom.style.opacity = 1;
+  shake();
+  setTimeout(()=> boom.style.opacity = 0, 450);
+  picked = [];
+}
+
+function checkPotion(){
+  // 정답: 파랑+갈색+검정 (순서 상관없음)
+  const need = ["blue","brown","black"].sort().join(",");
+  const got = [...picked].sort().join(",");
+  return got === need;
+}
+
+/* =========================
+   엔딩(타이핑 + 하트)
+========================= */
+function typeEnding(text){
+  endingText.textContent = "";
+  let i=0;
+  const t = setInterval(()=>{
+    endingText.textContent += text[i++];
+    if(i>=text.length) clearInterval(t);
+  }, 120);
+}
+function hearts(){
+  for(let i=0;i<26;i++){
+    setTimeout(()=>{
+      const h = document.createElement("div");
+      h.className="heart";
+      h.textContent="❤️";
+      h.style.left = (Math.random()*100) + "vw";
+      h.style.bottom = "0";
+      h.style.fontSize = (18 + Math.random()*18) + "px";
+      document.body.appendChild(h);
+      setTimeout(()=>h.remove(), 3000);
+    }, i*90);
+  }
+}
+
+/* =========================
+   게임 흐름(스테이지)
+   ★ 핫스팟 좌표는 너 이미지에 맞게 조정
+========================= */
+
+// 0 시작
+function S0(){
+  setScene("img/s0.png", [
+    // 시작하기 버튼 영역
+    { x:30, y:78, w:40, h:12, onTap: ()=>{
+      sfx(A.tap);
+      startBgm();               // iOS는 “클릭 이후” 재생 가능
+      S1();
+    }},
+  ]);
+}
+
+// 1 스토리(납치)
+function S1(){
+  setScene("img/s1.png", [
+    // 구출 시작 버튼 영역
+    { x:28, y:78, w:44, h:12, onTap: ()=>{
+      sfx(A.tap);
+      // 1단계 자물쇠(정답 1019)
+      K1();
+    }},
+  ]);
+}
+
+// 1단계 자물쇠(정답 1019)
+function K1(){
+  setScene("img/k1c.png", []);
+  mountLock({
+    closedImg: "img/k1c.png",
+    openImg: "img/k1o.png",
+    answer: "1019",
+    onSolved: ()=>{
+      sfx(A.ok);
+      // 손전등 방으로
+      F0();
+    }
+  });
+}
+
+// 손전등 방
+function F0(){
+  setScene("img/f0.png", [
+    { x:10, y:84, w:22, h:10, onTap: ()=>{ sfx(A.tap); setScene("img/fl.png", FBTN(false)); } },
+    { x:39, y:84, w:22, h:10, onTap: ()=>{ sfx(A.tap); setScene("img/fc.png", FBTN(true)); } },
+    { x:68, y:84, w:22, h:10, onTap: ()=>{ sfx(A.tap); setScene("img/fr.png", FBTN(false)); } },
+  ]);
+}
+function FBTN(found){
+  const arr = [
+    { x:10, y:84, w:22, h:10, onTap: ()=>{ sfx(A.tap); setScene("img/fl.png", FBTN(found)); } },
+    { x:39, y:84, w:22, h:10, onTap: ()=>{ sfx(A.tap); setScene("img/fc.png", FBTN(true)); } },
+    { x:68, y:84, w:22, h:10, onTap: ()=>{ sfx(A.tap); setScene("img/fr.png", FBTN(found)); } },
+  ];
+  if(found){
+    // 다음 버튼(정면에서 힌트 봤을 때만)
+    arr.push({ x:30, y:94, w:40, h:6, onTap: ()=>{ sfx(A.lock); K2(); } });
+  }
+  return arr;
+}
+
+// 2단계 자물쇠(정답 0506)
+function K2(){
+  setScene("img/k2c.png", []);
+  mountLock({
+    closedImg: "img/k2c.png",
+    openImg: "img/k2o.png",
+    answer: "0506",
+    onSolved: ()=>{
+      sfx(A.ok);
+      // 물약방으로
+      P0();
+    }
+  });
+}
+
+// 물약방
+function P0(){
+  picked = [];
+  setScene("img/p0.png", [
+    // 물약병 위치(예시) — 너 그림에 맞게 좌표 수정
+    { x:12, y:58, w:12, h:14, onTap: ()=>dropPotion("blue") },
+    { x:26, y:58, w:12, h:14, onTap: ()=>dropPotion("brown") },
+    { x:40, y:58, w:12, h:14, onTap: ()=>dropPotion("black") },
+    { x:54, y:58, w:12, h:14, onTap: ()=>dropPotion("pink") },
+    { x:68, y:58, w:12, h:14, onTap: ()=>dropPotion("red") },
+    { x:12, y:75, w:12, h:14, onTap: ()=>dropPotion("yellow") },
+    { x:26, y:75, w:12, h:14, onTap: ()=>dropPotion("green") },
+    { x:40, y:75, w:12, h:14, onTap: ()=>dropPotion("white") },
+
+    // 설명서(오버레이)
+    { x:74, y:10, w:22, h:12, onTap: ()=>{
+      sfx(A.paper);
+      openOverlay("img/m0.png", { x:80, y:8, w:16, h:10 }); // 닫기 버튼 영역(이미지에 맞게 수정)
+    }},
+
+    // 종이 영역(보기용, 선택)
+    { x:12, y:88, w:26, h:10, onTap: ()=>{ sfx(A.tap); setScene("img/pp0.png", [{x:4,y:4,w:20,h:10,onTap:()=>{sfx(A.tap); P0();}}]); } },
+
+    // 붓기 버튼(정답 검사)
+    { x:30, y:90, w:40, h:10, onTap: ()=>{
+      sfx(A.pour);
+      if(picked.length < 3){
+        // 3개 미만이면 그냥 무시(원하면 안내 오버레이 가능)
+        return;
+      }
+      if(checkPotion()){
+        sfx(A.ok);
+        // 정답 종이 이미지 보여주고(선택) 다음
+        setScene("img/pp1.png", [
+          { x:30, y:90, w:40, h:10, onTap: ()=>{ sfx(A.lock); B0(); } }
+        ]);
+      } else {
+        failBoom();
+      }
+      picked = [];
+    }},
+  ]);
+}
+
+// 책장방
+function B0(){
+  setScene("img/b0.png", [
+    // 오답 책들(좌표 예시)
+    { x:8,  y:62, w:28, h:9, onTap: ()=>{ sfx(A.tap); } },
+    { x:8,  y:74, w:28, h:9, onTap: ()=>{ sfx(A.tap); } },
+
+    // 정답 ‘자기결정’ (좌표 예시)
+    { x:8,  y:86, w:28, h:9, onTap: ()=>{
+      sfx(A.key);
+      // 열쇠 등장 컷 보여주고 → “구출하러가기” 버튼
+      setScene("img/key.png", [
+        { x:30, y:90, w:40, h:10, onTap: ()=>{
+          sfx(A.ok);
+          END();
+        }}
+      ]);
+    }},
+  ]);
+}
+
+// 엔딩
+function END(){
+  // 진행 bgm 멈추고 엔딩 BGM 시작
+  toEndBgm();
+  setScene("img/end.png", []);
+  typeEnding("세령공주 구출 성공!");
+  hearts();
+}
+
+/* 시작 */
+S0();
+
+/* 핫스팟 위치 맞출 때 켜기 */
+// game.classList.add("debug");
+</script>
+</body>
+</html>
