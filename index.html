@@ -204,6 +204,7 @@
 <audio id="stage" src="stage.mp3"></audio>
 <audio id="drawer" src="drawer.mp3"></audio>
 <audio id="boom" src="boom.mp3"></audio>
+<audio id="rrbgm" src="rr.mp3" loop></audio>
 
 <script>
 /* =========================
@@ -279,6 +280,7 @@ const get = document.getElementById("get");
 const stage = document.getElementById("stage");
 const drawer = document.getElementById("drawer");
 const boom = document.getElementById("boom");
+const rrbgm = document.getElementById("rrbgm");
 
 function s(a){ try{ a.currentTime=0; a.play(); }catch(e){} }
 
@@ -499,12 +501,12 @@ function Potion2Start(){
   // 병 배치(6개) - 화면 아래 선반 기준으로 깔끔하게
   // (필요하면 x/y만 조금 조절)
   const jars = [
-    {key:"blue",  src:ASSET.jarBlue,   x:25, y:70},
-    {key:"brown", src:ASSET.jarBrown,  x:40, y:70},
-    {key:"black", src:ASSET.jarBlack,  x:55, y:70},
-    {key:"red",   src:ASSET.jarRed,    x:70, y:70},
-    {key:"yellow",src:ASSET.jarYellow, x:35, y:83},
-    {key:"pink",  src:ASSET.jarPink,   x:60, y:83},
+    {key:"blue",  src:ASSET.jarBlue,   x:30, y:70},
+    {key:"brown", src:ASSET.jarBrown,  x:45, y:70},
+    {key:"black", src:ASSET.jarBlack,  x:60, y:70},
+    {key:"red",   src:ASSET.jarRed,    x:75, y:70},
+    {key:"yellow",src:ASSET.jarYellow, x:40, y:83},
+    {key:"pink",  src:ASSET.jarPink,   x:65, y:83},
   ];
   jars.forEach(j=>addJar(j.key, j.src, j.x, j.y));
 }
@@ -588,7 +590,7 @@ function showPaperFlow(){
 
   game.querySelectorAll(".bigBtn").forEach(b=>b.remove());
 
-  hint.textContent="깨끗한 종이가 나타났다.";
+  hint.textContent="종이를 터치하여 물약을 부어라";
   s(paperS);
 
   const paperImg=document.createElement("img");
@@ -687,6 +689,10 @@ function End(){
   setTimeout(()=>{
     makeBtn("편지 보러가기", ()=>{
       s(tap);
+  
+      try{ endbgm.pause(); endbgm.currentTime = 0; }catch(e){}
+      try{ rrbgm.volume = .55; rrbgm.currentTime = 0; rrbgm.play(); }catch(e){}
+
       setScene(ASSET.letter);
       hint.textContent="";
     }, {bottom: 22});
