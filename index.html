@@ -283,7 +283,15 @@ const boom = document.getElementById("boom");
 const rrbgm = document.getElementById("rrbgm");
 
 function s(a){ try{ a.currentTime=0; a.play(); }catch(e){} }
-
+ function playFor(audioEl, ms){
+  try{
+    audioEl.currentTime = 0;
+    audioEl.play();
+    setTimeout(()=>{
+      try{ audioEl.pause(); }catch(e){}
+    }, ms);
+  }catch(e){}
+}
 /* =========================
    ✅ 겹침 방지: “장면 바뀔 때” 오버레이 싹 제거
 ========================= */
@@ -533,7 +541,7 @@ function addJar(key, src, x, y){
   img.style.transform="translate(-50%,-50%)";
   img.onclick=()=>{
     if(potionLocked) return;
-    s(pour);
+    playFor(pour, 1500);
 
     // 솥 색 바꾸기(효과)
     setCauldronColor(key);
