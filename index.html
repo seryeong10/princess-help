@@ -499,12 +499,12 @@ function Potion2Start(){
   // 병 배치(6개) - 화면 아래 선반 기준으로 깔끔하게
   // (필요하면 x/y만 조금 조절)
   const jars = [
-    {key:"blue",  src:ASSET.jarBlue,   x:18, y:70},
-    {key:"brown", src:ASSET.jarBrown,  x:34, y:70},
-    {key:"black", src:ASSET.jarBlack,  x:50, y:70},
-    {key:"red",   src:ASSET.jarRed,    x:66, y:70},
-    {key:"yellow",src:ASSET.jarYellow, x:26, y:83},
-    {key:"pink",  src:ASSET.jarPink,   x:58, y:83},
+    {key:"blue",  src:ASSET.jarBlue,   x:25, y:70},
+    {key:"brown", src:ASSET.jarBrown,  x:40, y:70},
+    {key:"black", src:ASSET.jarBlack,  x:55, y:70},
+    {key:"red",   src:ASSET.jarRed,    x:70, y:70},
+    {key:"yellow",src:ASSET.jarYellow, x:35, y:83},
+    {key:"pink",  src:ASSET.jarPink,   x:60, y:83},
   ];
   jars.forEach(j=>addJar(j.key, j.src, j.x, j.y));
 }
@@ -584,11 +584,11 @@ function isPotionCorrect(arr){
   const got  = [...arr].slice(0,3).sort().join(",");
   return got === need;
 }
-
 function showPaperFlow(){
-  // 버튼 겹침 방지: 기존 bigBtn 싹 제거 후 진행
+
   game.querySelectorAll(".bigBtn").forEach(b=>b.remove());
-  hint.textContent="종이에 물약을 붓는다…";
+
+  hint.textContent="깨끗한 종이가 나타났다.";
   s(paperS);
 
   const paperImg=document.createElement("img");
@@ -596,18 +596,21 @@ function showPaperFlow(){
   paperImg.src=ASSET.paperClean;
   game.appendChild(paperImg);
 
-  // 0.7초 뒤 자동으로 번짐 + 자물쇠 버튼 생성
-  setTimeout(()=>{
+  // ✅ 종이를 눌러야 번짐
+  paperImg.onclick=()=>{
     s(pour);
     paperImg.src=ASSET.paperRevealed;
-    hint.textContent="힌트가 나타났다!";
+    hint.textContent="힌트가 드러났다!";
 
+    // 다시 못누르게
+    paperImg.onclick=null;
+
+    // ✅ 이제 자물쇠 버튼 생성
     makeBtn("자물쇠", ()=>{
       s(tap);
       Lock2();
-    }, {bottom: 72});
-
-  }, 700);
+    }, {bottom: 70});
+  };
 }
 
 /* =========================
